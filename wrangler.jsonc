@@ -1,0 +1,18 @@
+{
+  // Configuración para Cloudflare Workers (Workers & Pages → Create → Import a repository).
+  // Comando de despliegue: npx wrangler deploy   ·   Comando de compilación: (vacío)
+  "name": "tablero-compras",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+
+  // PASO 2 (opcional, para publicar datos desde el tablero):
+  // 1) Cree un KV namespace en Cloudflare (Storage & Databases → KV → Create) y copie su ID.
+  // 2) Borre las dos barras "//" de las 3 líneas siguientes y pegue el ID.
+  // ,"kv_namespaces": [
+  //   { "binding": "DATOS", "id": "PEGUE_AQUI_EL_ID_DEL_KV" }
+  // ]
+}

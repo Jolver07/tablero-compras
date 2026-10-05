@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Tablero de Cumplimiento de Compras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: barra de control fija arriba (corte, filtros), pestañas, y por pestaña: indicadores → gráfico → detalle */
+:root{
+  --bg:#f4f6f7; --surface:#ffffff; --surface-2:#eef1f3; --line:#d9dfe3; --line-soft:#e7ebee;
+  --ink:#10202b; --ink-2:#4a5a66; --ink-3:#7b8994;
+  --accent:#1f5f99; --accent-soft:#e3edf7; --accent-ink:#ffffff;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --good-ink:#006300; --crit-ink:#b42d2d; --warn-ink:#8a5a00;
+  --grid:#e1e0d9; --axis:#c3c2b7;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1519; --surface:#172026; --surface-2:#1e2930; --line:#2c3a43; --line-soft:#24313a;
+  --ink:#eef3f6; --ink-2:#b3c0c8; --ink-3:#83939d;
+  --accent:#6aa8e6; --accent-soft:#1d3346; --accent-ink:#0b1620;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good-ink:#3fc23f; --crit-ink:#ef7d7d; --warn-ink:#f5c04f;
+  --grid:#2c2c2a; --axis:#4a4a46; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0f1519; --surface:#172026; --surface-2:#1e2930; --line:#2c3a43; --line-soft:#24313a;
+  --ink:#eef3f6; --ink-2:#b3c0c8; --ink-3:#83939d;
+  --accent:#6aa8e6; --accent-soft:#1d3346; --accent-ink:#0b1620;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good-ink:#3fc23f; --crit-ink:#ef7d7d; --warn-ink:#f5c04f;
+  --grid:#2c2c2a; --axis:#4a4a46; color-scheme:dark }
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:20px;padding-block:0 48px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-block:20px 14px}
+h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.src{color:var(--ink-3);font-size:12.5px;margin-top:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+input[type=date],input[type=number],input[type=search],select{font:inherit;font-size:13.5px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px;min-height:34px}
+input[type=number]{width:70px}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r);padding:6px 12px;min-height:34px;font-size:13.5px;font-weight:500}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:focus-visible,.tab:focus-visible,.ms-btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.ms{position:relative}
+.ms-btn{min-width:190px;max-width:260px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r);padding:6px 28px 6px 10px;min-height:34px;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
+.ms-btn::after{content:"";position:absolute;right:10px;top:50%;width:7px;height:7px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:translateY(-70%) rotate(45deg)}
+.ms-btn.on{border-color:var(--accent);background:var(--accent-soft)}
+.ms-pop{position:absolute;top:calc(100% + 4px);left:0;width:300px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:8px;z-index:40}
+.ms-pop input[type=search]{width:100%;margin-bottom:6px}
+.ms-acts{display:flex;gap:6px;margin-bottom:6px}
+.ms-acts button{flex:1;font-size:12px;padding:4px;min-height:28px}
+.ms-list{max-height:300px;overflow:auto}
+.ms-list label{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:4px;font-size:13px;cursor:pointer}
+.ms-list label:hover{background:var(--surface-2)}
+.ms-list .cnt{margin-left:auto;color:var(--ink-3);font-variant-numeric:tabular-nums;font-size:12px}
+.ms-list .zero{opacity:.45}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2);min-height:20px;padding-top:6px}
+.tabs{display:flex;gap:2px;overflow-x:auto;margin-top:16px;border-bottom:1px solid var(--line)}
+.tab{border:0;background:none;color:var(--ink-2);padding:10px 14px;font-size:14px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+section.panel{padding-top:18px;display:flex;flex-direction:column;gap:18px}
+.lead{color:var(--ink-2);max-width:900px;margin:0;font-size:13.5px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:500}
+.tile .v{font-size:26px;font-weight:600;letter-spacing:-.01em}
+.tile .d{font-size:12.5px;color:var(--ink-2)}
+.tile.hero{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.tile .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:14px 16px;min-width:0}
+.card h2{font-size:15px;font-weight:600;margin:0 0 2px}
+.card .sub{color:var(--ink-3);font-size:12.5px;margin:0 0 10px}
+.grid2{align-items:start;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{font-family:var(--sans)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--ink-2);margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.tbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tbar .left{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tbl{overflow:auto;max-height:560px;border:1px solid var(--line-soft);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:12.8px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line-soft);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface-2);font-weight:600;color:var(--ink-2);font-size:11.8px;cursor:pointer;user-select:none;z-index:1}
+th.num,td.num{text-align:right}
+th .ar{color:var(--accent);margin-left:3px}
+tbody tr:hover td{background:var(--surface-2)}
+td.wrap{white-space:normal;min-width:220px;max-width:360px}
+td.mono{font-family:var(--mono);font-size:12px}
+tr.total td{font-weight:600;background:var(--accent-soft)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:1px 8px;border-radius:10px;border:1px solid var(--line)}
+.b-venc{color:var(--crit-ink);border-color:color-mix(in srgb,var(--crit) 45%,transparent);background:color-mix(in srgb,var(--crit) 10%,transparent)}
+.b-pv{color:var(--warn-ink);border-color:color-mix(in srgb,var(--warn) 55%,transparent);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.b-ok{color:var(--good-ink);border-color:color-mix(in srgb,var(--good) 45%,transparent);background:color-mix(in srgb,var(--good) 10%,transparent)}
+.b-nd{color:var(--ink-2)}
+.meter{display:inline-block;width:64px;height:6px;background:var(--surface-2);border-radius:3px;vertical-align:middle;margin-right:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--s1);border-radius:3px}
+.pager{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2);margin-top:8px;flex-wrap:wrap}
+.note{font-size:12.5px;color:var(--ink-3);margin:6px 0 0}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;padding:6px 9px;border-radius:5px;z-index:60;max-width:260px;line-height:1.35}
+#loading{position:fixed;inset:0;background:color-mix(in srgb,var(--bg) 85%,transparent);display:flex;align-items:center;justify-content:center;z-index:80;font-size:15px;color:var(--ink-2)}
+.seg{align-self:flex-start;display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--ink-2);padding:6px 12px;font-size:13px;min-height:32px}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.msg{font-size:12.5px;color:var(--ink-2)}
+.pubbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--accent-soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px}
+.pubbar input{width:180px}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:8px 16px;font-size:12.5px;color:var(--ink-2);margin:0;padding:0;list-style:none}
+.defs b{color:var(--ink);font-weight:600;display:block}
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.msg.err{color:var(--crit-ink)}
+@media (max-width:640px){.filters{position:static}.ms-btn{min-width:150px}.tile .v{font-size:22px}h1{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Tablero de cumplimiento de compras</h1>
+      <div class="src" id="src">Cargando datos…</div>
+    </div>
+    <div class="ctrls">
+      <label class="f" for="corte">Fecha de corte<input type="date" id="corte"></label>
+      <label class="f" for="umbral">Por vencer (días)<input type="number" id="umbral" min="0" max="60" value="3"></label>
+      <input type="file" id="file" accept=".xlsx,.xls" hidden>
+      <button class="btn" id="btnLoad" type="button" title="Abre el Excel “Seguimiento de Solpeds” en su navegador">Cargar reporte nuevo</button>
+    </div>
+  </header>
+  <div class="msg" id="loadMsg" hidden></div>
+  <div class="pubbar" id="pubBar" hidden>
+    <span>Este reporte solo se ve en su navegador. Para que todos los que abran el enlace lo vean, publíquelo:</span>
+    <label class="f" for="clave">Clave de administrador<input type="password" id="clave" autocomplete="current-password"></label>
+    <button class="btn primary" id="btnPub" type="button">Publicar para todos</button>
+    <span class="msg" id="pubMsg"></span>
+  </div>
+
+  <div class="filters" id="filters">
+    <label class="f">Sucursal<div class="ms" id="ms-suc"></div></label>
+    <label class="f">Tipo de solicitud<div class="ms" id="ms-tipo"></div></label>
+    <label class="f">Clúster<div class="ms" id="ms-clu"></div></label>
+    <label class="f">Categoría<div class="ms" id="ms-cat"></div></label>
+    <label class="f" for="d1">SOLPED desde<input type="date" id="d1"></label>
+    <label class="f" for="d2">SOLPED hasta<input type="date" id="d2"></label>
+    <label class="f" for="fsp">N.º SOLPED<input type="search" id="fsp" placeholder="Ej.: SP202604-00941, 00942" style="width:230px"></label>
+    <button class="btn" id="btnClear" type="button">Limpiar filtros</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-cump" aria-selected="true">Cumplimiento de OC</button>
+    <button class="tab" role="tab" id="t-ab" aria-selected="false">OC abiertas: vencidas y por vencer</button>
+    <button class="tab" role="tab" id="t-ciclo" aria-selected="false">Ciclo de OC cerradas</button>
+    <button class="tab" role="tab" id="t-etapas" aria-selected="false">Etapas del ciclo</button>
+    <button class="tab" role="tab" id="t-curso" aria-selected="false">Ciclos en curso</button>
+    <button class="tab" role="tab" id="t-res" aria-selected="false">Resumen por sucursal y tipo</button>
+  </nav>
+
+  <section class="panel" id="p-cump"></section>
+  <section class="panel" id="p-ab" hidden></section>
+  <section class="panel" id="p-ciclo" hidden></section>
+  <section class="panel" id="p-etapas" hidden></section>
+  <section class="panel" id="p-curso" hidden></section>
+  <section class="panel" id="p-res" hidden></section>
+</div>
+<div id="tip" hidden></div>
+<div id="loading">Cargando 82.702 líneas de SOLPED…</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+"use strict";
+/* ============================ utilidades ============================ */
+const $ = s => document.querySelector(s);
+const DAY = 864e5;
+const fmtN = new Intl.NumberFormat('es-EC',{maximumFractionDigits:0});
+const fmt1 = new Intl.NumberFormat('es-EC',{minimumFractionDigits:1,maximumFractionDigits:1});
+const n0 = v => v==null||isNaN(v)?'—':fmtN.format(v);
+const n1 = v => v==null||isNaN(v)?'—':fmt1.format(v);
+const pct = (a,b) => b? fmt1.format(100*a/b)+'%' : '—';
+const dstr = d => { if(d==null) return ''; const t=new Date(d*DAY); return String(t.getUTCDate()).padStart(2,'0')+'/'+String(t.getUTCMonth()+1).padStart(2,'0')+'/'+t.getUTCFullYear(); };
+const diso = d => d==null?'':new Date(d*DAY).toISOString().slice(0,10);
+const fromIso = s => s? Math.round(Date.parse(s+'T00:00:00Z')/DAY) : null;
+const mes = d => { const t=new Date(d*DAY); return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0'); };
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const mesLbl = m => MESES[+m.slice(5)-1]+' '+m.slice(2,4);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function median(a){ if(!a.length) return null; const s=Float64Array.from(a).sort(); const m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function quant(a,q){ if(!a.length) return null; const s=Float64Array.from(a).sort(); return s[Math.min(s.length-1,Math.floor(q*(s.length-1)))]; }
+const mean = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : null;
+
+/* ============================ modelo ============================ */
+const PRE = {'PENDIENTE':'SOLPED por aprobar','CODIGO PENDIENTE':'SOLPED por aprobar','CANTIDAD APROBADA':'En gestión de compras','PETICIÓN DE OFERTAS':'En gestión de compras','COTIZADO':'En gestión de compras','PRECIO APROBADO':'OC en aprobación','OC APROBADA':'OC en aprobación'};
+const REQ = ['Estado','Solped','Clúster','Sucursal','Tipo Solicitud','Fecha solped.','Fecha Aprob','Fecha OC','OC ERP','Fecha de entrega','Ult. Fecha Ingr. Bod','Cant. Orden Compra','Cant. Ingreso','Cantidad Pendiente'];
+let M = null;           // modelo
+let S = {corte:null, umbral:3, suc:null, tipo:null, clu:null, cat:null, sp:null, d1:null, d2:null, tab:'cump'};
+
+function buildModel(L){
+  // L: array de líneas normalizadas
+  const ocs = new Map();
+  const CATN={'MATERIAL':'Material','SERVICIO':'Servicio','ACTIVO':'Activo'};
+  for(const l of L){
+    l.cat = CATN[l.cat] || l.cat || '(sin categoría)';
+    l.pre = PRE[l.est] || null;
+    l.aprob = l.fAp!=null;
+    l.atend = (l.oc!=null && l.est!=='OC ANULADA') || l.est==='CONTRATO GENERADO' || l.est==='CONTRATO MARCO';
+    l.abierta = (l.est==='OC GENERADA'||l.est==='INGRESO PARCIAL') && l.qPend>0;
+    l.parcial = l.abierta && l.qIng>0;
+    if(l.oc!=null){
+      let o = ocs.get(l.oc);
+      if(!o){ o={oc:l.oc, suc:l.suc, tipo:l.tipo, clu:l.clu, prov:l.prov, comp:l.comp, sp:l.sp, cat:l.cat, fSP:l.fSP, fAp:l.fAp, fOC:l.fOC, fIng:null, n:0, nAb:0, nIT:0, nIP:0, nAn:0, nPar:0, lines:[]}; ocs.set(l.oc,o); }
+      o.n++; o.lines.push(l);
+      if(l.fSP!=null && (o.fSP==null||l.fSP<o.fSP)) o.fSP=l.fSP;
+      if(l.fAp!=null && (o.fAp==null||l.fAp<o.fAp)) o.fAp=l.fAp;
+      if(l.fOC!=null && (o.fOC==null||l.fOC<o.fOC)) o.fOC=l.fOC;
+      if(l.fIng!=null && (o.fIng==null||l.fIng>o.fIng)) o.fIng=l.fIng;
+      if(l.abierta) o.nAb++;
+      if(l.parcial) o.nPar++;
+      if(l.est==='OC CERRADA (IT)') o.nIT++;
+      if(l.est==='OC CERRADA (IP)') o.nIP++;
+      if(l.est==='OC ANULADA') o.nAn++;
+    }
+  }
+  for(const o of ocs.values()){
+    o.estado = o.nAb>0 ? 'Abierta' : (o.nAn===o.n ? 'Anulada' : (o.nIP>0 ? 'Cerrada administrativa' : (o.nIT>0 ? 'Cerrada con ingreso total' : 'Abierta')));
+    if(o.estado==='Abierta' && o.nAb===0) o.estado='Cerrada administrativa';
+    o.tAt = (o.fOC!=null&&o.fAp!=null)? o.fOC-o.fAp : null;
+    if(o.estado==='Cerrada con ingreso total' && o.fIng!=null && o.fSP!=null){
+      o.ciclo = o.fIng-o.fSP; o.t1 = o.fAp!=null? o.fAp-o.fSP : null; o.t2 = (o.fAp!=null&&o.fOC!=null)? o.fOC-o.fAp : null; o.t3 = o.fOC!=null? o.fIng-o.fOC : null;
+    }
+  }
+  const uniq = k => { const m=new Map(); for(const l of L){ m.set(l[k],(m.get(l[k])||0)+1);} return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]); };
+  let maxD = 0; for(const l of L){ for(const d of [l.fSP,l.fIng,l.fOC]) if(d!=null&&d>maxD) maxD=d; }
+  return {L, ocs:[...ocs.values()], dims:{suc:uniq('suc'), tipo:uniq('tipo'), clu:uniq('clu'), cat:uniq('cat')}, maxD};
+}
+
+/* plazo por corte */
+function plazo(l){
+  if(l.fEnt==null) return {st:'Sin fecha', d:null};
+  const d = l.fEnt - S.corte;
+  if(d<0) return {st:'Vencida', d};
+  if(d<=S.umbral) return {st:'Por vencer', d};
+  return {st:'Dentro del plazo', d};
+}
+const RANK = {'Vencida':4,'Sin fecha':3,'Por vencer':2,'Dentro del plazo':1};
+
+/* ============================ filtros ============================ */
+const pass = x => (!S.suc||S.suc.has(x.suc)) && (!S.tipo||S.tipo.has(x.tipo)) && (!S.clu||S.clu.has(x.clu)) && (!S.cat||S.cat.has(x.cat)) && (!S.sp||S.sp.some(t=>x.sp.includes(t))) && (S.d1==null||(x.fSP!=null&&x.fSP>=S.d1)) && (S.d2==null||(x.fSP!=null&&x.fSP<=S.d2));
+function filtered(){ return {L:M.L.filter(pass), O:M.ocs.filter(pass)}; }
+
+const MS = {};
+function makeMS(id,key,label){
+  const host=$('#ms-'+id); host.innerHTML='';
+  const btn=document.createElement('button'); btn.type='button'; btn.className='ms-btn'; btn.id='msb-'+id; btn.setAttribute('aria-haspopup','listbox');
+  const pop=document.createElement('div'); pop.className='ms-pop'; pop.hidden=true;
+  pop.innerHTML=`<input type="search" placeholder="Buscar ${label.toLowerCase()}" id="mss-${id}"><div class="ms-acts"><button type="button" class="btn" data-a="all">Todas</button><button type="button" class="btn" data-a="none">Ninguna</button></div><div class="ms-list" role="listbox"></div>`;
+  host.append(btn,pop);
+  const list=pop.querySelector('.ms-list'), q=pop.querySelector('input');
+  const render=()=>{
+    // conteos dinámicos con los otros filtros
+    const other = {...S}; other[key]=null;
+    const cnt=new Map();
+    for(const l of M.L){ if((key==='suc'||!other.suc||other.suc.has(l.suc))&&(key==='tipo'||!other.tipo||other.tipo.has(l.tipo))&&(key==='clu'||!other.clu||other.clu.has(l.clu))&&(key==='cat'||!other.cat||other.cat.has(l.cat))&&(!S.sp||S.sp.some(t=>l.sp.includes(t)))&&(S.d1==null||(l.fSP!=null&&l.fSP>=S.d1))&&(S.d2==null||(l.fSP!=null&&l.fSP<=S.d2))) cnt.set(l[key],(cnt.get(l[key])||0)+1); }
+    const term=q.value.trim().toLowerCase();
+    const vals=M.dims[key].filter(v=>!term||String(v).toLowerCase().includes(term)).sort((a,b)=>(cnt.get(b)||0)-(cnt.get(a)||0));
+    list.innerHTML=vals.map((v,i)=>{ const c=cnt.get(v)||0; const ch=!S[key]||S[key].has(v); return `<label class="${c?'':'zero'}"><input type="checkbox" data-v="${esc(v)}" ${ch?'checked':''}> <span>${esc(v||'(vacío)')}</span><span class="cnt">${n0(c)}</span></label>`; }).join('');
+  };
+  const sync=()=>{
+    const sel=S[key];
+    btn.textContent = !sel ? `Todas (${M.dims[key].length})` : (sel.size===1 ? [...sel][0] : `${sel.size} seleccionadas`);
+    btn.classList.toggle('on',!!sel);
+  };
+  btn.onclick=e=>{ e.preventDefault(); e.stopPropagation(); const open=pop.hidden; document.querySelectorAll('.ms-pop').forEach(p=>p.hidden=true); pop.hidden=!open; if(open){ render(); q.focus(); } };
+  q.oninput=render;
+  pop.addEventListener('click',e=>e.stopPropagation());
+  list.addEventListener('change',e=>{
+    const v=e.target.dataset.v; let sel=S[key]? new Set(S[key]) : new Set(M.dims[key]);
+    e.target.checked? sel.add(v) : sel.delete(v);
+    S[key] = sel.size===M.dims[key].length ? null : sel; sync(); refresh();
+  });
+  pop.querySelector('[data-a=all]').onclick=()=>{ S[key]=null; render(); sync(); refresh(); };
+  pop.querySelector('[data-a=none]').onclick=()=>{ S[key]=new Set(); render(); sync(); refresh(); };
+  MS[key]={sync,render}; sync();
+}
+document.addEventListener('click',()=>document.querySelectorAll('.ms-pop').forEach(p=>p.hidden=true));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.ms-pop').forEach(p=>p.hidden=true); });
+
+function chips(){
+  const parts=[];
+  const add=(lab,set)=>{ if(set) parts.push(`<b>${lab}:</b> ${set.size? esc([...set].slice(0,3).join(', '))+(set.size>3?` +${set.size-3}`:'') : 'ninguna'}`); };
+  add('Sucursal',S.suc); add('Tipo',S.tipo); add('Clúster',S.clu); add('Categoría',S.cat);
+  if(S.sp) parts.push(`<b>N.º SOLPED:</b> ${esc(S.sp.join(', '))}`);
+  if(S.d1!=null||S.d2!=null) parts.push(`<b>SOLPED:</b> ${S.d1!=null?dstr(S.d1):'inicio'} – ${S.d2!=null?dstr(S.d2):'fin'}`);
+  $('#chips').innerHTML = parts.length? 'Filtros activos · '+parts.join(' · ') : 'Sin filtros: se muestran todas las sucursales, tipos de solicitud, clústeres y categorías.';
+}
+
+/* ============================ tooltip ============================ */
+const tip=$('#tip');
+function showTip(e,html){ tip.innerHTML=html; tip.hidden=false; const x=Math.min(e.clientX+14, innerWidth-tip.offsetWidth-8), y=Math.max(8,e.clientY-tip.offsetHeight-10); tip.style.left=x+'px'; tip.style.top=y+'px'; }
+function hideTip(){ tip.hidden=true; }
+function bindTips(root){ root.querySelectorAll('[data-tip]').forEach(el=>{ el.addEventListener('mousemove',e=>showTip(e,el.dataset.tip)); el.addEventListener('mouseleave',hideTip); }); }
+
+/* ============================ gráficos SVG ============================ */
+function barChart({cats, vals, labels, tips, colors, yMax, yFmt=n0, h=230, unit='', W=760}){
+  W=Math.max(320,Math.round(W));
+  const L=46, R=12, T=14, B=36, ih=h-T-B, iw=W-L-R;
+  const mx = yMax ?? Math.max(1,...vals);
+  const step = niceStep(mx/4); const top=Math.ceil(mx/step)*step || 1;
+  const bw = iw/cats.length, gap=Math.max(2,Math.min(10,bw*.25));
+  let s=`<svg viewBox="0 0 ${W} ${h}" role="img">`;
+  for(let v=0; v<=top+1e-9; v+=step){ const y=T+ih-ih*v/top; s+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/><text x="${L-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${yFmt(v)}${unit}</text>`; }
+  cats.forEach((c,i)=>{ const v=vals[i]||0, x=L+i*bw+gap/2, w=bw-gap, bh=ih*v/top, y=T+ih-bh;
+    s+=`<g data-tip="${esc(tips[i])}"><rect x="${x-gap/2}" y="${T}" width="${bw}" height="${ih}" fill="transparent"/><path d="${roundTop(x,y,w,bh)}" fill="${colors? colors[i]:'var(--s1)'}"/></g>`;
+    if(labels&&labels[i]!=null&&bw>26) s+=`<text x="${x+w/2}" y="${y-5}" text-anchor="middle" font-size="11" fill="var(--ink-2)">${labels[i]}</text>`;
+    s+=`<text x="${x+w/2}" y="${h-B+16}" text-anchor="middle" font-size="11" fill="var(--ink-3)">${esc(c)}</text>`; });
+  s+=`<line x1="${L}" x2="${W-R}" y1="${T+ih}" y2="${T+ih}" stroke="var(--axis)"/></svg>`;
+  return s;
+}
+function roundTop(x,y,w,h){ if(h<=0) return ''; const r=Math.min(4,w/2,h); return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`; }
+function niceStep(x){ if(x<=0) return 1; const p=Math.pow(10,Math.floor(Math.log10(x))); const f=x/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+
+function stackBar(parts, W=760){ // parts: [{lab,val,color}]
+  W=Math.max(320,Math.round(W)); const h=70, L=0, iw=W; const tot=parts.reduce((a,p)=>a+(p.val||0),0)||1;
+  let x=0, s=`<svg viewBox="0 0 ${W} ${h}" role="img">`;
+  parts.forEach((p,i)=>{ const w=iw*(p.val||0)/tot; const gap= i<parts.length-1?2:0;
+    s+=`<g data-tip="${esc(p.tip)}"><rect x="${x}" y="8" width="${Math.max(0,w-gap)}" height="30" rx="${i===0||i===parts.length-1?4:0}" fill="${p.color}"/></g>`;
+    if(w>90) s+=`<text x="${x+8}" y="58" font-size="12" fill="var(--ink-2)">${esc(p.lab)} · ${n1(p.val)} d</text>`;
+    x+=w; });
+  return s+'</svg>';
+}
+
+/* ============================ tablas ============================ */
+const TB={};
+function table(id, cols, rows, {pageSize=50, sortKey=null, sortDir=-1, total=null, note=''}={}){
+  const st = TB[id] || (TB[id]={page:0, sortKey, sortDir, q:''});
+  const host=$('#'+id);
+  const term=st.q.toLowerCase();
+  let R = term? rows.filter(r=>cols.some(c=>String(c.get(r)??'').toLowerCase().includes(term))) : rows.slice();
+  if(st.sortKey!=null){ const c=cols.find(c=>c.k===st.sortKey); if(c){ const g=c.sv||c.get; R.sort((a,b)=>{ const x=g(a), y=g(b); if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return (x<y?-1:x>y?1:0)*st.sortDir; }); } }
+  const pages=Math.max(1,Math.ceil(R.length/pageSize)); st.page=Math.min(st.page,pages-1);
+  const slice=R.slice(st.page*pageSize,(st.page+1)*pageSize);
+  host.innerHTML = `<div class="tbar"><div class="left"><input type="search" placeholder="Buscar en la tabla" value="${esc(st.q)}" id="${id}-q" aria-label="Buscar en la tabla"><span class="msg">${n0(R.length)} filas</span></div><button class="btn" type="button" id="${id}-copy">Copiar para Excel</button></div>
+  <div class="tbl"><table><thead><tr>${cols.map(c=>`<th class="${c.num?'num':''}" data-k="${c.k}">${esc(c.h)}${st.sortKey===c.k?`<span class="ar">${st.sortDir>0?'▲':'▼'}</span>`:''}</th>`).join('')}</tr></thead>
+  <tbody>${slice.map(r=>`<tr>${cols.map(c=>`<td class="${(c.num?'num ':'')+(c.cls||'')}">${c.html? c.html(r) : esc(c.fmt? c.fmt(c.get(r)) : c.get(r))}</td>`).join('')}</tr>`).join('')}
+  ${total && st.page===pages-1 ? `<tr class="total">${cols.map(c=>`<td class="${c.num?'num':''}">${total[c.k]??''}</td>`).join('')}</tr>`:''}</tbody></table></div>
+  <div class="pager">${pages>1?`<button class="btn" type="button" id="${id}-prev" ${st.page?'':'disabled'}>Anterior</button><span>Página ${st.page+1} de ${pages}</span><button class="btn" type="button" id="${id}-next" ${st.page<pages-1?'':'disabled'}>Siguiente</button>`:''}${note?`<span class="note">${note}</span>`:''}<span class="msg" id="${id}-cmsg"></span></div>`;
+  host.querySelectorAll('th').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(st.sortKey===k) st.sortDir*=-1; else { st.sortKey=k; st.sortDir=-1; } st.page=0; table(id,cols,rows,{pageSize,total,note}); });
+  const q=$(`#${id}-q`); q.oninput=()=>{ st.q=q.value; st.page=0; table(id,cols,rows,{pageSize,total,note}); const nq=$(`#${id}-q`); nq.focus(); nq.setSelectionRange(nq.value.length,nq.value.length); };
+  if(pages>1){ $(`#${id}-prev`).onclick=()=>{st.page--; table(id,cols,rows,{pageSize,total,note});}; $(`#${id}-next`).onclick=()=>{st.page++; table(id,cols,rows,{pageSize,total,note});}; }
+  $(`#${id}-copy`).onclick=()=>{
+    const lines=[cols.map(c=>c.h).join('\t')].concat(R.map(r=>cols.map(c=>{ let v=c.get(r); if(v==null) return ''; if(c.date) return dstr(v); if(typeof v==='number') return String(Math.round(v*100)/100).replace('.',','); return String(v).replace(/[\t\n]/g,' '); }).join('\t')));
+    const txt=lines.join('\n'), m=$(`#${id}-cmsg`);
+    const fallback=()=>{ const ta=document.createElement('textarea'); ta.value=txt; document.body.append(ta); ta.select(); try{ document.execCommand('copy'); m.textContent='Copiado: pegue en Excel.'; }catch(_){ m.textContent='No se pudo copiar.'; } ta.remove(); };
+    try{ navigator.clipboard.writeText(txt).then(()=>m.textContent=`Copiadas ${n0(R.length)} filas: pegue en Excel.`, fallback); }catch(_){ fallback(); }
+  };
+}
+
+/* ============================ pestañas ============================ */
+const badge = st => `<span class="badge ${st==='Vencida'?'b-venc':st==='Por vencer'?'b-pv':st==='Dentro del plazo'?'b-ok':'b-nd'}">${st==='Vencida'?'▲ ':st==='Por vencer'?'● ':st==='Dentro del plazo'?'✓ ':''}${esc(st)}</span>`;
+
+function renderCump(F){
+  const O=F.O, vig=O.filter(o=>o.estado!=='Anulada');
+  const it=vig.filter(o=>o.estado==='Cerrada con ingreso total').length, ab=vig.filter(o=>o.estado==='Abierta').length, adm=vig.filter(o=>o.estado==='Cerrada administrativa').length, an=O.length-vig.length;
+  const months=[...new Set(vig.map(o=>o.fOC!=null?mes(o.fOC):null).filter(Boolean))].sort();
+  const byM=months.map(m=>{ const g=vig.filter(o=>o.fOC!=null&&mes(o.fOC)===m); const k=g.filter(o=>o.estado==='Cerrada con ingreso total').length; return {m,k,n:g.length}; });
+  $('#p-cump').innerHTML = `
+  <p class="lead">Cumplimiento = OC cerradas con ingreso total ÷ OC aprobadas vigentes (emitidas en SAP, sin las anuladas). Una OC cuenta como cerrada con ingreso total cuando todas sus posiciones no anuladas están en “OC CERRADA (IT)”.</p>
+  <div class="tiles">
+    <div class="tile hero"><span class="k">Cumplimiento</span><span class="v">${pct(it,vig.length)}</span><span class="d">${n0(it)} de ${n0(vig.length)} OC aprobadas</span></div>
+    <div class="tile"><span class="k">Cerradas con ingreso total</span><span class="v">${n0(it)}</span><span class="d">OC</span></div>
+    <div class="tile"><span class="k">Abiertas</span><span class="v">${n0(ab)}</span><span class="d">${pct(ab,vig.length)} de las aprobadas</span></div>
+    <div class="tile"><span class="k">Cierre administrativo</span><span class="v">${n0(adm)}</span><span class="d">Cerradas con ingreso parcial · ${pct(adm,vig.length)}</span></div>
+    <div class="tile"><span class="k">Anuladas (excluidas)</span><span class="v">${n0(an)}</span><span class="d">No entran al denominador</span></div>
+  </div>
+  <div class="card"><h2>Cumplimiento por mes de emisión de la OC</h2><p class="sub">% de OC cerradas con ingreso total sobre OC aprobadas del mes. Los meses recientes aún tienen OC dentro de plazo, por eso bajan.</p>
+    <div class="chart" id="ch-cump"></div></div>
+  <div class="card"><h2>Detalle por mes</h2><p class="sub">Numerador y denominador de cada mes.</p><div id="tb-cump"></div></div>`;
+  $('#ch-cump').innerHTML = barChart({W:$('#ch-cump').clientWidth,cats:byM.map(x=>mesLbl(x.m)), vals:byM.map(x=>x.n?100*x.k/x.n:0), labels:byM.map(x=>x.n?fmt1.format(100*x.k/x.n)+'%':''), tips:byM.map(x=>`<b>${mesLbl(x.m)}</b><br>${n0(x.k)} cerradas con ingreso total de ${n0(x.n)} aprobadas<br>Cumplimiento ${pct(x.k,x.n)}`), yMax:100, yFmt:v=>fmtN.format(v), unit:'%'});
+  bindTips($('#ch-cump'));
+  table('tb-cump',[
+    {k:'m',h:'Mes de la OC',get:r=>r.m,fmt:mesLbl},
+    {k:'n',h:'OC aprobadas',get:r=>r.n,num:1,fmt:n0},
+    {k:'k',h:'Cerradas con ingreso total',get:r=>r.k,num:1,fmt:n0},
+    {k:'p',h:'Cumplimiento',get:r=>r.n?r.k/r.n:null,num:1,html:r=>`<span class="meter"><i style="width:${r.n?100*r.k/r.n:0}%"></i></span>${pct(r.k,r.n)}`},
+    {k:'a',h:'Abiertas',get:r=>r.a,num:1,fmt:n0}],
+    byM.map(x=>({...x,a:vig.filter(o=>o.fOC!=null&&mes(o.fOC)===x.m&&o.estado==='Abierta').length})),{sortKey:'m',sortDir:1,pageSize:24,
+    total:{m:'Total',n:n0(vig.length),k:n0(it),p:pct(it,vig.length),a:n0(ab)}});
+  TB['tb-cump'].sortKey=TB['tb-cump'].sortKey||'m';
+}
+
+function renderAb(F){
+  const lines=F.L.filter(l=>l.abierta).map(l=>{ const p=plazo(l); return {...l, st:p.st, dd:p.d}; });
+  const ocMap=new Map(); for(const l of lines){ const o=ocMap.get(l.oc)||{oc:l.oc,st:'Dentro del plazo',max:0,n:0}; o.n++; if(RANK[l.st]>RANK[o.st]) o.st=l.st; if(l.st==='Vencida') o.max=Math.max(o.max,-l.dd); ocMap.set(l.oc,o); }
+  const ocs=[...ocMap.values()];
+  const cO=st=>ocs.filter(o=>o.st===st).length, cL=st=>lines.filter(l=>l.st===st).length;
+  const venc=lines.filter(l=>l.st==='Vencida');
+  const B=[['1–7',1,7],['8–15',8,15],['16–30',16,30],['31–60',31,60],['61–90',61,90],['91–180',91,180],['> 180',181,1e9]];
+  const pvBuckets=[]; for(let d=0; d<=S.umbral; d++) pvBuckets.push(d);
+  const cats=['Por vencer'].concat(B.map(b=>b[0]+' d'));
+  const vals=[cL('Por vencer')].concat(B.map(b=>venc.filter(l=>-l.dd>=b[1]&&-l.dd<=b[2]).length));
+  $('#p-ab').innerHTML = `
+  <p class="lead">Posiciones de OC con cantidad pendiente (estados OC GENERADA e INGRESO PARCIAL). Vencida = fecha de entrega comprometida anterior a la fecha de corte; por vencer = vence en ${S.umbral} días o menos. Las OC se cuentan una vez, con el peor estado de sus posiciones.</p>
+  <div class="tiles">
+    <div class="tile hero"><span class="k">OC abiertas con posiciones vencidas</span><span class="v">${n0(cO('Vencida'))}</span><span class="d">${pct(cO('Vencida'),ocs.length)} de ${n0(ocs.length)} OC abiertas · ${n0(cL('Vencida'))} posiciones</span></div>
+    <div class="tile"><span class="k">OC por vencer (≤ ${S.umbral} d)</span><span class="v">${n0(cO('Por vencer'))}</span><span class="d">${n0(cL('Por vencer'))} posiciones</span></div>
+    <div class="tile"><span class="k">OC dentro del plazo</span><span class="v">${n0(cO('Dentro del plazo'))}</span><span class="d">${n0(cL('Dentro del plazo'))} posiciones${cL('Sin fecha')?` · ${n0(cL('Sin fecha'))} sin fecha`:''}</span></div>
+    <div class="tile"><span class="k">Días vencidos</span><span class="v">${n0(median(venc.map(l=>-l.dd)))} d</span><span class="d">mediana · promedio ${n0(mean(venc.map(l=>-l.dd)))} días</span></div>
+    <div class="tile"><span class="k">Con entrega parcial</span><span class="v">${n0(lines.filter(l=>l.parcial).length)}</span><span class="d">posiciones con saldo pendiente · ${pct(lines.filter(l=>l.parcial).length,lines.length)} de las abiertas</span></div>
+  </div>
+  <div class="card"><h2>Posiciones por días vencidos</h2><p class="sub">Posiciones abiertas por vencer y vencidas, agrupadas por días de atraso a la fecha de corte.</p>
+    <div class="chart" id="ch-ab"></div>
+    <div class="legend"><span><i class="dot" style="background:var(--warn)"></i>Por vencer (≤ ${S.umbral} días)</span><span><i class="dot" style="background:var(--crit)"></i>Vencida</span></div></div>
+  <div class="card"><h2>Detalle de posiciones abiertas</h2><p class="sub">Ordenado por días vencidos. Use el filtro de estado para ver solo vencidas o por vencer.</p>
+    <div class="seg" role="group" aria-label="Estado de plazo" id="segAb">${['Vencidas y por vencer','Vencida','Por vencer','Dentro del plazo','Todas'].map(x=>`<button type="button" data-v="${x}" aria-pressed="${(S.abSt||'Vencidas y por vencer')===x}">${x}</button>`).join('')}</div>
+    <div id="tb-ab" style="margin-top:10px"></div></div>`;
+  $('#ch-ab').innerHTML = barChart({W:$('#ch-ab').clientWidth,cats, vals, labels:vals.map(n0), tips:cats.map((c,i)=>`<b>${c}</b><br>${n0(vals[i])} posiciones`), colors:vals.map((_,i)=>i===0?'var(--warn)':'var(--crit)')});
+  bindTips($('#ch-ab'));
+  $('#segAb').onclick=e=>{ const v=e.target.dataset.v; if(!v) return; S.abSt=v; if(TB['tb-ab']) TB['tb-ab'].page=0; renderAb(F); };
+  const sel=S.abSt||'Vencidas y por vencer';
+  const rows=lines.filter(l=> sel==='Todas'? true : sel==='Vencidas y por vencer'? (l.st==='Vencida'||l.st==='Por vencer') : l.st===sel);
+  table('tb-ab',[
+    {k:'oc',h:'OC',get:r=>r.oc,cls:'mono'},
+    {k:'sp',h:'SOLPED',get:r=>r.sp,cls:'mono'},
+    {k:'st',h:'Estado',get:r=>r.st,html:r=>badge(r.st),sv:r=>RANK[r.st]},
+    {k:'dv',h:'Días vencido',get:r=>r.st==='Vencida'?-r.dd:null,num:1,fmt:v=>v==null?'':n0(v),sv:r=>r.dd==null?-1e9:-r.dd},
+    {k:'dp',h:'Días para vencer',get:r=>r.st==='Vencida'||r.dd==null?null:r.dd,num:1,fmt:v=>v==null?'':n0(v)},
+    {k:'fe',h:'Entrega comprometida',get:r=>r.fEnt,fmt:dstr,date:1},
+    {k:'foc',h:'Fecha OC',get:r=>r.fOC,fmt:dstr,date:1},
+    {k:'prov',h:'Proveedor',get:r=>r.prov},
+    {k:'suc',h:'Sucursal',get:r=>r.suc},
+    {k:'tipo',h:'Tipo de solicitud',get:r=>r.tipo},
+    {k:'clu',h:'Clúster',get:r=>r.clu},
+    {k:'cat',h:'Categoría',get:r=>r.cat},
+    {k:'item',h:'Material / servicio',get:r=>r.item,cls:'wrap'},
+    {k:'qp',h:'Cant. pendiente',get:r=>r.qPend,num:1,fmt:v=>fmt1.format(v)},
+    {k:'par',h:'Parcial',get:r=>r.parcial?'Sí':'No'},
+    {k:'comp',h:'Comprador',get:r=>r.comp}], rows, {sortKey:TB['tb-ab']?.sortKey||'dv'});
+}
+
+function renderCiclo(F){
+  const O=F.O.filter(o=>o.ciclo!=null);
+  const c=O.map(o=>o.ciclo), a1=O.map(o=>o.t1).filter(v=>v!=null), a2=O.map(o=>o.t2).filter(v=>v!=null), a3=O.map(o=>o.t3).filter(v=>v!=null);
+  const B=[[0,7],[8,14],[15,21],[22,30],[31,45],[46,60],[61,90],[91,1e9]];
+  const lab=b=>b[1]>=1e9?`> ${b[0]-1}`:`${b[0]}–${b[1]}`;
+  const vals=B.map(b=>c.filter(v=>v>=b[0]&&v<=b[1]).length);
+  $('#p-ciclo').innerHTML = `
+  <p class="lead">Ciclo total de compras de las OC cerradas con ingreso total: desde la fecha de la SOLPED hasta el último ingreso a bodega de la OC. Días calendario.</p>
+  <div class="tiles">
+    <div class="tile hero"><span class="k">Ciclo total promedio</span><span class="v">${n1(mean(c))} d</span><span class="d">${n0(O.length)} OC cerradas con ingreso total</span></div>
+    <div class="tile"><span class="k">Mediana</span><span class="v">${n1(median(c))} d</span><span class="d">la mitad de las OC cierra en este plazo o menos</span></div>
+    <div class="tile"><span class="k">Percentil 90</span><span class="v">${n1(quant(c,.9))} d</span><span class="d">el 10% más lento supera este valor</span></div>
+    <div class="tile"><span class="k">SOLPED aprobada → OC</span><span class="v">${n1(mean(O.map(o=>o.tAt).filter(v=>v!=null)))} d</span><span class="d">atención de Compras: desde la aprobación de la SOLPED hasta la OC</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h2>Composición del ciclo promedio</h2><p class="sub">Días promedio en cada tramo.</p><div class="chart" id="ch-comp"></div>
+      <div class="legend"><span><i class="dot" style="background:var(--s1)"></i>Aprobación SOLPED ${n1(mean(a1))} d</span><span><i class="dot" style="background:var(--s2)"></i>Aprobada → OC ${n1(mean(a2))} d</span><span><i class="dot" style="background:var(--s3)"></i>OC → ingreso ${n1(mean(a3))} d</span></div></div>
+    <div class="card"><h2>Distribución del ciclo total</h2><p class="sub">Número de OC por rango de días.</p><div class="chart" id="ch-dist"></div></div>
+  </div>
+  <div class="card"><h2>Detalle de OC cerradas con ingreso total</h2><p class="sub">Una fila por OC.</p><div id="tb-ciclo"></div></div>`;
+  $('#ch-comp').innerHTML=stackBar([{lab:'Aprobación',val:mean(a1),color:'var(--s1)',tip:`<b>Aprobación de SOLPED</b><br>${n1(mean(a1))} días promedio`},{lab:'Aprobada → OC',val:mean(a2),color:'var(--s2)',tip:`<b>SOLPED aprobada → OC</b><br>${n1(mean(a2))} días promedio`},{lab:'OC → ingreso',val:mean(a3),color:'var(--s3)',tip:`<b>OC → último ingreso</b><br>${n1(mean(a3))} días promedio`}], $('#ch-comp').clientWidth);
+  $('#ch-dist').innerHTML=barChart({W:$('#ch-dist').clientWidth,cats:B.map(lab), vals, labels:vals.map(n0), tips:B.map((b,i)=>`<b>${lab(b)} días</b><br>${n0(vals[i])} OC (${pct(vals[i],O.length)})`), h:220});
+  bindTips($('#p-ciclo'));
+  table('tb-ciclo',[
+    {k:'oc',h:'OC',get:r=>r.oc,cls:'mono'},{k:'sp',h:'SOLPED',get:r=>r.sp,cls:'mono'},
+    {k:'suc',h:'Sucursal',get:r=>r.suc},{k:'tipo',h:'Tipo de solicitud',get:r=>r.tipo},{k:'clu',h:'Clúster',get:r=>r.clu},{k:'cat',h:'Categoría',get:r=>r.cat},{k:'prov',h:'Proveedor',get:r=>r.prov},
+    {k:'fsp',h:'Fecha SOLPED',get:r=>r.fSP,fmt:dstr,date:1},{k:'foc',h:'Fecha OC',get:r=>r.fOC,fmt:dstr,date:1},{k:'fing',h:'Último ingreso',get:r=>r.fIng,fmt:dstr,date:1},
+    {k:'t1',h:'Aprobación (d)',get:r=>r.t1,num:1,fmt:n0},{k:'t2',h:'Aprobada → OC (d)',get:r=>r.t2,num:1,fmt:n0},{k:'t3',h:'OC → ingreso (d)',get:r=>r.t3,num:1,fmt:n0},
+    {k:'ciclo',h:'Ciclo total (d)',get:r=>r.ciclo,num:1,fmt:n0}], O, {sortKey:TB['tb-ciclo']?.sortKey||'ciclo'});
+}
+
+/* ---------- Etapas del ciclo ---------- */
+const ETAPAS=[
+  {k:'e1',h:'Aprob. cantidad',d:'SOLPED creada → cantidad aprobada'},
+  {k:'e2',h:'Cotización',d:'Cantidad aprobada → preorden; incluye la espera hasta que el comprador atiende'},
+  {k:'e3',h:'Aprob. precio',d:'Preorden → precio aprobado'},
+  {k:'e4',h:'Aprobador OC1',d:'Precio aprobado → primera aprobación de la OC'},
+  {k:'e5',h:'Aprobador OC2',d:'Primera → segunda aprobación (0 si la OC tiene un solo aprobador)'},
+  {k:'e6',h:'Generación OC',d:'Última aprobación → OC generada en SAP'},
+  {k:'e7',h:'Ingreso bodega',d:'OC generada → último ingreso a bodega de la posición'}];
+function stagesOf(l){
+  if(l._s!==undefined) return l._s;
+  let r=null;
+  if(l.est==='OC CERRADA (IT)' && l.qIng>0){
+    const c=[l.tSP,l.tAp,l.tPre,l.tPr,l.tA1,l.tA2,l.tOC,l.tIng];
+    if(c[0]!=null && c[7]!=null){ for(let i=1;i<8;i++) if(c[i]==null) c[i]=c[i-1]; r=[]; for(let i=0;i<7;i++) r.push((c[i+1]-c[i])/1440); r.push((c[7]-c[0])/1440); }
+  }
+  l._s=r; return r;
+}
+const f2=new Intl.NumberFormat('es-EC',{minimumFractionDigits:2,maximumFractionDigits:2});
+const n2=v=>v==null||isNaN(v)?'—':f2.format(v);
+function renderEtapas(F){
+  const G={mesSP:['Mes de SOLPED',l=>mes(l.fSP)],mesOC:['Mes de OC',l=>mes(l.fOC)],mesIng:['Mes de ingreso',l=>mes(l.fIng)],suc:['Sucursal',l=>l.suc],tipo:['Tipo de solicitud',l=>l.tipo],clu:['Clúster',l=>l.clu],cat:['Categoría',l=>l.cat],comp:['Comprador',l=>l.comp]};
+  const gk=S.etG||'mesOC', met=S.etM||'prom';
+  const agg=met==='prom'? (a=>mean(a)) : (a=>median(a));
+  const groups=new Map(), all=Array.from({length:8},()=>[]);
+  let n=0;
+  for(const l of F.L){ const s=stagesOf(l); if(!s) continue; n++;
+    const k=G[gk][1](l); let g=groups.get(k); if(!g){ g={k, a:Array.from({length:8},()=>[])}; groups.set(k,g); }
+    for(let i=0;i<8;i++){ g.a[i].push(s[i]); all[i].push(s[i]); } }
+  const rows=[...groups.values()].map(g=>{ const o={k:g.k, n:g.a[0].length}; for(let i=0;i<8;i++) o['e'+(i+1)]=agg(g.a[i]); o.tot=o.e8; return o; });
+  const tot={}; for(let i=0;i<8;i++) tot['e'+(i+1)]=agg(all[i]);
+  const stVals=ETAPAS.map((e,i)=>tot['e'+(i+1)]||0);
+  const iMax=stVals.indexOf(Math.max(...stVals)), sumSt=stVals.reduce((a,b)=>a+b,0);
+  const gestion=stVals.slice(0,6).reduce((a,b)=>a+b,0);
+  const colMax={}; ETAPAS.forEach((e,i)=>{ colMax[e.k]=Math.max(0,...rows.map(r=>r[e.k]||0)); }); colMax.tot=Math.max(0,...rows.map(r=>r.tot||0));
+  const isMonth=gk.startsWith('mes');
+  $('#p-etapas').innerHTML=`
+  <p class="lead">Tiempo de cada etapa del proceso, en días con decimales calculados con fecha y hora, para las posiciones de OC cerradas con ingreso total. Aplica los filtros de sucursal, tipo de solicitud, clúster, categoría y fechas de SOLPED. ${met==='prom'?'Con promedios, las etapas suman el ciclo total.':'Las medianas de cada etapa no suman la mediana del ciclo total.'}</p>
+  <ul class="defs">${ETAPAS.map(e=>`<li><b>${e.h}</b>${e.d}</li>`).join('')}</ul>
+  <div class="tiles">
+    <div class="tile hero"><span class="k">Ciclo total ${met==='prom'?'promedio':'mediana'}</span><span class="v">${n2(tot.e8)} d</span><span class="d">${n0(n)} posiciones cerradas con ingreso total</span></div>
+    <div class="tile"><span class="k">Etapa con mayor demora</span><span class="v">${ETAPAS[iMax].h}</span><span class="d">${n2(stVals[iMax])} días${met==='prom'?` · ${pct(stVals[iMax],sumSt)} del ciclo`:''}</span></div>
+    <div class="tile"><span class="k">Gestión hasta generar la OC</span><span class="v">${n2(gestion)} d</span><span class="d">Aprob. cantidad a generación OC${met==='prom'?` · ${pct(gestion,sumSt)} del ciclo`:''}</span></div>
+    <div class="tile"><span class="k">Ingreso bodega</span><span class="v">${n2(stVals[6])} d</span><span class="d">De la OC al último ingreso${met==='prom'?` · ${pct(stVals[6],sumSt)} del ciclo`:''}</span></div>
+  </div>
+  <div class="card"><h2>Días por etapa</h2><p class="sub">${met==='prom'?'Promedio':'Mediana'} de días de cada etapa con los filtros activos; en rojo, la etapa con mayor demora.</p><div class="chart" id="ch-et"></div></div>
+  <div class="card"><h2>Etapas por ${G[gk][0].replace(/^./,c=>c.toLowerCase())}</h2><p class="sub">Días ${met==='prom'?'promedio':'mediana'} por etapa. El sombreado indica qué grupo demora más en cada etapa; subrayada en rojo, la etapa más lenta de cada fila.</p>
+    <div class="ctl"><label class="f" for="etG">Agrupar por<select id="etG">${Object.entries(G).map(([k,v])=>`<option value="${k}" ${k===gk?'selected':''}>${v[0]}</option>`).join('')}</select></label>
+    <div class="seg" role="group" aria-label="Medida" id="segEt"><button type="button" data-v="prom" aria-pressed="${met==='prom'}">Promedio</button><button type="button" data-v="med" aria-pressed="${met==='med'}">Mediana</button></div></div>
+    <div id="tb-et" style="margin-top:10px"></div></div>`;
+  $('#ch-et').innerHTML=barChart({W:$('#ch-et').clientWidth, cats:ETAPAS.map(e=>e.h), vals:stVals, labels:stVals.map(n2), yFmt:v=>fmt1.format(v),
+    tips:ETAPAS.map((e,i)=>`<b>${e.h}</b><br>${n2(stVals[i])} días${met==='prom'?`<br>${pct(stVals[i],sumSt)} del ciclo total`:''}<br><span style="opacity:.8">${e.d}</span>`),
+    colors:stVals.map((_,i)=>i===iMax?'var(--crit)':'var(--s1)')});
+  bindTips($('#ch-et'));
+  $('#etG').onchange=e=>{ S.etG=e.target.value; delete TB['tb-et']; renderEtapas(F); };
+  $('#segEt').onclick=e=>{ const v=e.target.dataset.v; if(!v) return; S.etM=v; renderEtapas(F); };
+  const heat=(r,k)=>{ const v=r[k]; if(v==null) return '—'; const m=colMax[k]||1; const a=Math.round(Math.max(0,Math.min(1,v/m))*38);
+    let mx=-1,mk=null; ETAPAS.forEach(e=>{ if((r[e.k]??-1)>mx){mx=r[e.k];mk=e.k;} });
+    return `<div style="background:color-mix(in srgb,var(--crit) ${a}%,transparent);margin:-6px -9px;padding:6px 9px" class="${k===mk?'':''}">${k===mk?`<b style="box-shadow:inset 0 -2px 0 var(--crit)">${n2(v)}</b>`:n2(v)}</div>`; };
+  const cols=[{k:'k',h:G[gk][0],get:r=>r.k,fmt:v=>isMonth?mesLbl(v):v}, {k:'n',h:'Posiciones',get:r=>r.n,num:1,fmt:n0}]
+    .concat(ETAPAS.map(e=>({k:e.k,h:e.h,get:r=>r[e.k],num:1,html:r=>heat(r,e.k)})))
+    .concat([{k:'tot',h:'Ciclo total',get:r=>r.tot,num:1,html:r=>`<b>${n2(r.tot)}</b>`}]);
+  const total={k:'Total',n:n0(n),tot:n2(tot.e8)}; ETAPAS.forEach((e,i)=>total[e.k]=n2(tot['e'+(i+1)]));
+  table('tb-et',cols,rows,{sortKey:TB['tb-et']?.sortKey||(isMonth?'k':'n'),pageSize:200,total});
+  if(isMonth && !TB['tb-et']._init){ TB['tb-et'].sortDir=1; TB['tb-et']._init=1; table('tb-et',cols,rows,{pageSize:200,total}); }
+}
+
+function renderCurso(F){
+  const rows=[];
+  for(const o of F.O.filter(o=>o.estado==='Abierta')){
+    let worst='Dentro del plazo'; for(const l of o.lines) if(l.abierta){ const p=plazo(l).st; if(RANK[p]>RANK[worst]) worst=p; }
+    rows.push({ref:o.oc, sp:o.sp, etapa:o.nPar>0?'OC con ingreso parcial':'OC emitida, sin ingreso', suc:o.suc, tipo:o.tipo, clu:o.clu, cat:o.cat, prov:o.prov, comp:o.comp, fSP:o.fSP, desde:o.fOC, plazo:worst, n:o.nAb});
+  }
+  const g=new Map();
+  for(const l of F.L) if(l.pre){ const k=l.sp+'|'+l.pre; let r=g.get(k); if(!r){ r={ref:'—', sp:l.sp, etapa:l.pre, suc:l.suc, tipo:l.tipo, clu:l.clu, cat:l.cat, prov:l.prov||'', comp:l.comp, fSP:l.fSP, desde: l.pre==='SOLPED por aprobar'? l.fSP : l.pre==='En gestión de compras'? l.fAp : (l.fPr??l.fAt), plazo:'', n:0}; g.set(k,r);} r.n++; }
+  rows.push(...g.values());
+  for(const r of rows){ r.dTot = r.fSP!=null? S.corte-r.fSP : null; r.dEt = r.desde!=null? S.corte-r.desde : null; }
+  const ET=['SOLPED por aprobar','En gestión de compras','OC en aprobación','OC emitida, sin ingreso','OC con ingreso parcial'];
+  const st=ET.map(e=>{ const x=rows.filter(r=>r.etapa===e); return {e, n:x.length, d:mean(x.map(r=>r.dTot).filter(v=>v!=null))}; });
+  $('#p-curso').innerHTML = `
+  <p class="lead">Compras que aún no terminan su ciclo, con los días transcurridos desde la SOLPED hasta la fecha de corte. Antes de la OC se cuenta por SOLPED y etapa; con OC emitida se cuenta por OC.</p>
+  <div class="tiles">${st.map((s,i)=>`<div class="tile${i===3?' hero':''}"><span class="k">${s.e}</span><span class="v">${n0(s.n)}</span><span class="d">${s.n?`${n1(s.d)} días promedio desde la SOLPED`:'sin casos'}</span></div>`).join('')}</div>
+  <div class="card"><h2>Antigüedad promedio por etapa</h2><p class="sub">Días desde la SOLPED a la fecha de corte; la etiqueta indica cuántos casos hay en cada etapa.</p><div class="chart" id="ch-curso"></div></div>
+  <div class="card"><h2>Detalle de ciclos en curso</h2><p class="sub">“Días en la etapa” se mide desde la fecha en que empezó la etapa actual (aprobación, atención o fecha OC).</p><div id="tb-curso"></div></div>`;
+  $('#ch-curso').innerHTML=barChart({W:$('#ch-curso').clientWidth,cats:st.map(s=>s.e.replace('SOLPED ','').replace(' de compras','').replace(', sin ingreso','').replace('OC con ingreso parcial','Ingreso parcial')), vals:st.map(s=>s.d||0), labels:st.map(s=>`${n0(s.n)} casos`), tips:st.map(s=>`<b>${s.e}</b><br>${n0(s.n)} casos<br>${n1(s.d)} días promedio desde la SOLPED`), unit:' d'});
+  bindTips($('#ch-curso'));
+  table('tb-curso',[
+    {k:'etapa',h:'Etapa actual',get:r=>r.etapa,sv:r=>ET.indexOf(r.etapa)},
+    {k:'ref',h:'OC',get:r=>r.ref,cls:'mono'},{k:'sp',h:'SOLPED',get:r=>r.sp,cls:'mono'},
+    {k:'n',h:'Posiciones',get:r=>r.n,num:1,fmt:n0},
+    {k:'suc',h:'Sucursal',get:r=>r.suc},{k:'tipo',h:'Tipo de solicitud',get:r=>r.tipo},{k:'clu',h:'Clúster',get:r=>r.clu},{k:'cat',h:'Categoría',get:r=>r.cat},
+    {k:'prov',h:'Proveedor',get:r=>r.prov},{k:'comp',h:'Comprador',get:r=>r.comp},
+    {k:'fsp',h:'Fecha SOLPED',get:r=>r.fSP,fmt:dstr,date:1},
+    {k:'dTot',h:'Días desde SOLPED',get:r=>r.dTot,num:1,fmt:n0},
+    {k:'dEt',h:'Días en la etapa',get:r=>r.dEt,num:1,fmt:n0},
+    {k:'plazo',h:'Plazo de entrega',get:r=>r.plazo,html:r=>r.plazo?badge(r.plazo):'',sv:r=>RANK[r.plazo]||0}], rows, {sortKey:TB['tb-curso']?.sortKey||'dTot'});
+}
+
+function agg(F,key){
+  const m=new Map();
+  const get=k=>{ let r=m.get(k); if(!r){ r={k, ap:0, at:0, oc:0, it:0, ab:0, venc:0, pv:0, tAt:[], cic:[]}; m.set(k,r);} return r; };
+  for(const l of F.L){ const r=get(l[key]); if(l.aprob) r.ap++; if(l.aprob&&l.atend) r.at++; }
+  for(const o of F.O){ if(o.estado==='Anulada') continue; const r=get(o[key]); r.oc++; if(o.estado==='Cerrada con ingreso total'){ r.it++; if(o.ciclo!=null) r.cic.push(o.ciclo);} if(o.tAt!=null) r.tAt.push(o.tAt);
+    if(o.estado==='Abierta'){ r.ab++; let w='Dentro del plazo'; for(const l of o.lines) if(l.abierta){ const p=plazo(l).st; if(RANK[p]>RANK[w]) w=p; } if(w==='Vencida') r.venc++; else if(w==='Por vencer') r.pv++; } }
+  return [...m.values()];
+}
+function renderRes(F){
+  const dim=S.resDim||'suc';
+  const DN={suc:'Sucursal',tipo:'Tipo de solicitud',clu:'Clúster',cat:'Categoría'};
+  const rows=agg(F,dim);
+  const T=agg({L:F.L,O:F.O},'__all')[0]||{ap:0,at:0,oc:0,it:0,ab:0,venc:0,pv:0,tAt:[],cic:[]};
+  $('#p-res').innerHTML = `
+  <p class="lead">Indicadores por ${DN[dim].toLowerCase()} con los filtros activos. % atención = líneas de SOLPED aprobadas que llegaron a OC o contrato ÷ líneas aprobadas. Cumplimiento = OC cerradas con ingreso total ÷ OC aprobadas vigentes. Tiempo de atención = aprobación de la SOLPED → generación de la OC (lo que gestiona Compras; no incluye la aprobación de la SOLPED ni el ingreso a bodega); ciclo total = SOLPED → último ingreso, solo OC cerradas con ingreso total.</p>
+  <div class="seg" role="group" aria-label="Agrupar por" id="segRes">${Object.entries(DN).map(([k,v])=>`<button type="button" data-v="${k}" aria-pressed="${dim===k}">${v}</button>`).join('')}</div>
+  <div class="card"><h2>Resumen por ${DN[dim].toLowerCase()}</h2><p class="sub">Clic en un encabezado para ordenar. “Copiar para Excel” copia la tabla completa.</p><div id="tb-res"></div></div>`;
+  $('#segRes').onclick=e=>{ const v=e.target.dataset.v; if(!v) return; S.resDim=v; if(TB['tb-res']) TB['tb-res'].q=''; renderRes(F); };
+  const P=(a,b)=>b?a/b:null;
+  const meter=v=>v==null?'—':`<span class="meter"><i style="width:${Math.max(0,Math.min(100,100*v))}%"></i></span>${fmt1.format(100*v)}%`;
+  table('tb-res',[
+    {k:'k',h:DN[dim],get:r=>r.k},
+    {k:'oc',h:'OC aprobadas',get:r=>r.oc,num:1,fmt:n0},
+    {k:'it',h:'Cerradas ingreso total',get:r=>r.it,num:1,fmt:n0},
+    {k:'cum',h:'% cumplimiento',get:r=>P(r.it,r.oc),num:1,html:r=>meter(P(r.it,r.oc))},
+    {k:'ab',h:'OC abiertas',get:r=>r.ab,num:1,fmt:n0},
+    {k:'venc',h:'Abiertas vencidas',get:r=>r.venc,num:1,fmt:n0},
+    {k:'pv',h:'Por vencer',get:r=>r.pv,num:1,fmt:n0},
+    {k:'ap',h:'Líneas SP aprobadas',get:r=>r.ap,num:1,fmt:n0},
+    {k:'at',h:'Líneas atendidas',get:r=>r.at,num:1,fmt:n0},
+    {k:'pat',h:'% atención',get:r=>P(r.at,r.ap),num:1,html:r=>meter(P(r.at,r.ap))},
+    {k:'tat',h:'Atención SP aprobada → OC prom. (d)',get:r=>mean(r.tAt),num:1,fmt:n1},
+    {k:'tatm',h:'Atención SP aprobada → OC mediana (d)',get:r=>median(r.tAt),num:1,fmt:n1},
+    {k:'cic',h:'Ciclo total prom. (d)',get:r=>mean(r.cic),num:1,fmt:n1},
+    {k:'cicm',h:'Ciclo total mediana (d)',get:r=>median(r.cic),num:1,fmt:n1}], rows,
+    {sortKey:TB['tb-res']?.sortKey||'oc', pageSize:200,
+     total:{k:'Total',oc:n0(T.oc),it:n0(T.it),cum:pct(T.it,T.oc),ab:n0(T.ab),venc:n0(T.venc),pv:n0(T.pv),ap:n0(T.ap),at:n0(T.at),pat:pct(T.at,T.ap),tat:n1(mean(T.tAt)),tatm:n1(median(T.tAt)),cic:n1(mean(T.cic)),cicm:n1(median(T.cic))}});
+}
+
+/* ============================ ciclo de refresco ============================ */
+let rzT; addEventListener('resize',()=>{ clearTimeout(rzT); rzT=setTimeout(refresh,200); });
+const RENDER={cump:renderCump, ab:renderAb, ciclo:renderCiclo, etapas:renderEtapas, curso:renderCurso, res:renderRes};
+function refresh(){ if(!M) return; chips(); const F=filtered(); RENDER[S.tab](F); }
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  S.tab=t.id.slice(2); document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t)); document.querySelectorAll('section.panel').forEach(p=>p.hidden=p.id!=='p-'+S.tab);
+  try{ localStorage.setItem('tab',S.tab);}catch(_){}
+  refresh();
+});
+$('#corte').onchange=e=>{ const v=fromIso(e.target.value); if(v!=null){ S.corte=v; refresh(); } };
+$('#umbral').onchange=e=>{ const v=Math.max(0,Math.min(60,parseInt(e.target.value)||0)); S.umbral=v; e.target.value=v; refresh(); };
+let spT; $('#fsp').oninput=e=>{ clearTimeout(spT); spT=setTimeout(()=>{ const t=e.target.value.toUpperCase().split(/[\s,;]+/).filter(Boolean); S.sp=t.length?t:null; for(const k in TB) TB[k].page=0; refresh(); },250); };
+$('#d1').onchange=e=>{ S.d1=fromIso(e.target.value); refresh(); };
+$('#d2').onchange=e=>{ S.d2=fromIso(e.target.value); refresh(); };
+$('#btnClear').onclick=()=>{ S.suc=S.tipo=S.clu=S.cat=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null; $('#d1').value=$('#d2').value=''; Object.values(MS).forEach(m=>m.sync()); refresh(); };
+
+function setModel(model, fuente, corte){
+  M=model; S.corte=corte; S.suc=S.tipo=S.clu=S.cat=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null;
+  $('#corte').value=diso(corte); $('#d1').value=$('#d2').value='';
+  $('#src').textContent=`${fuente} · ${n0(M.L.length)} líneas de SOLPED · ${n0(M.ocs.length)} OC · días calendario`;
+  makeMS('suc','suc','Sucursal'); makeMS('tipo','tipo','Tipo de solicitud'); makeMS('clu','clu','Clúster'); makeMS('cat','cat','Categoría');
+  for(const k in TB) delete TB[k];
+  refresh();
+}
+
+/* datos incluidos */
+const mday = m => m==null?null:Math.floor(m/1440);
+function derive(o){ o.fSP=mday(o.tSP); o.fAp=mday(o.tAp); o.fPr=mday(o.tPr); o.fOC=mday(o.tOC); o.fIng=mday(o.tIng); }
+function fromColumnar(D){
+  const C=D.cols, n=D.n;
+  const col=(name)=>{ const c=C[name]; if(!c) return ()=>null; if(c.t==='s') return i=>c.dict[c.v[i]] ?? ''; if(c.t==='ts'){ const b=c.base/c.u; return i=>c.v[i]==null?null:(c.v[i]+b)*c.u; } return i=>c.v[i]; };
+  const g={est:col('Estado'),sp:col('Solped'),clu:col('Clúster'),suc:col('Sucursal'),tipo:col('Tipo Solicitud'),cat:col('Categoría'),comp:col('Comprador(a)'),prov:col('Proveedor'),cod:col('Código'),item:col('Nombre de Item'),
+    tSP:col('Fecha solped.'),tAp:col('Fecha Aprob'),fAt:col('Fecha atención comprador'),tPre:col('Fecha Preorden'),tPr:col('Fecha Aprob Precio'),tA1:col('Fecha Aprob 1 OC'),tA2:col('Fecha Aprob 2 OC'),tOC:col('Fecha OC'),oc:col('OC ERP'),fEnt:col('Fecha de entrega'),tIng:col('Ult. Fecha Ingr. Bod'),qOC:col('Cant. Orden Compra'),qIng:col('Cant. Ingreso'),qPend:col('Cantidad Pendiente')};
+  const L=new Array(n);
+  for(let i=0;i<n;i++){ const o={}; for(const k in g) o[k]=g[k](i); if(o.oc!=null) o.oc=String(o.oc); derive(o); L[i]=o; }
+  return L;
+}
+
+/* publicación compartida (Cloudflare Pages Functions + KV) */
+let API=false, LAST=null;
+const COLMAP=[['Estado','s','est'],['Solped','s','sp'],['Clúster','s','clu'],['Sucursal','s','suc'],['Tipo Solicitud','s','tipo'],['Categoría','s','cat'],['Comprador(a)','s','comp'],['Proveedor','s','prov'],['Código','s','cod'],['Nombre de Item','s','item'],
+  ['Fecha solped.','ts','tSP'],['Fecha Aprob','ts','tAp'],['Fecha atención comprador','d','fAt'],['Fecha Preorden','ts','tPre'],['Fecha Aprob Precio','ts','tPr'],['Fecha Aprob 1 OC','ts','tA1'],['Fecha Aprob 2 OC','ts','tA2'],['Fecha OC','ts','tOC'],['OC ERP','n','oc'],
+  ['Fecha de entrega','d','fEnt'],['Ult. Fecha Ingr. Bod','ts','tIng'],['Cant. Orden Compra','n','qOC'],['Cant. Ingreso','n','qIng'],['Cantidad Pendiente','n','qPend']];
+function toColumnar(L, fuente, corte){
+  const BASE=28928160; // minutos al 01/01/2025
+  const out={n:L.length, cols:{}, corte, fuente};
+  for(const [name,t,k] of COLMAP){
+    if(t==='s'){ const dict=[], idx=new Map(), v=new Array(L.length); L.forEach((l,i)=>{ const x=l[k]==null?'':String(l[k]); let j=idx.get(x); if(j===undefined){ j=dict.length; dict.push(x); idx.set(x,j);} v[i]=j; }); out.cols[name]={t:'s',dict,v}; }
+    else if(t==='ts') out.cols[name]={t:'ts',base:BASE,u:10,v:L.map(l=>l[k]==null?null:Math.floor(l[k]/10)-BASE/10)};
+    else if(t==='d') out.cols[name]={t:'d',v:L.map(l=>l[k]==null?null:l[k])};
+    else out.cols[name]={t:'n',v:L.map(l=>l[k]==null?null:(k==='oc'?Number(l[k]):l[k]))};
+  }
+  return out;
+}
+$('#btnPub').onclick=async()=>{
+  const m=$('#pubMsg'), clave=$('#clave').value;
+  if(!LAST){ m.textContent='Primero cargue un reporte.'; return; }
+  if(!clave){ m.textContent='Ingrese la clave de administrador.'; return; }
+  const ahora=new Date();
+  const fuente=`${LAST.fuente} – corte ${dstr(S.corte)} – publicado ${ahora.toLocaleDateString('es-EC')} ${ahora.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}`;
+  m.className='msg'; m.textContent='Publicando…'; $('#btnPub').disabled=true;
+  try{
+    const body=JSON.stringify(toColumnar(LAST.L, fuente, S.corte));
+    const r=await fetch('api/datos',{method:'PUT',headers:{'content-type':'application/json','x-clave-admin':clave},body});
+    const txt=await r.text();
+    if(!r.ok) throw new Error(r.status===401?'Clave incorrecta.':txt||('Error '+r.status));
+    m.textContent='Publicado. Quien abra el enlace verá estos datos (puede tardar hasta 1 minuto en propagarse).';
+    $('#src').textContent=`${fuente} · ${n0(M.L.length)} líneas de SOLPED · ${n0(M.ocs.length)} OC · días calendario`;
+    $('#clave').value='';
+  }catch(err){ m.className='msg err'; m.textContent='No se pudo publicar. '+err.message; }
+  finally{ $('#btnPub').disabled=false; }
+};
+async function loadData(){
+  try{ const r=await fetch('api/datos',{cache:'no-store'}); if(r.headers.get('x-tablero-api')==='1'){ API=true; if(r.ok) return await r.json(); } }catch(_){}
+  const r=await fetch('data.json',{cache:'no-cache'}); if(!r.ok) throw new Error('sin datos'); return await r.json();
+}
+
+/* carga de reporte nuevo */
+function toDay(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date){ if(isNaN(v)) return null; return Math.floor(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate())/DAY); }
+  if(typeof v==='number') return Math.floor(v-25569);
+  const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/DAY);
+}
+function toMin(v){
+  if(v==null||v==='') return null;
+  if(v instanceof Date){ if(isNaN(v)) return null; return Math.floor(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate(),v.getHours(),v.getMinutes())/6e4); }
+  if(typeof v==='number') return Math.floor((v-25569)*1440);
+  const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/6e4);
+}
+$('#btnLoad').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const msg=$('#loadMsg'); msg.hidden=false; msg.className='msg'; msg.textContent=`Leyendo ${f.name}… un archivo de 25 MB puede tardar 20–40 segundos.`;
+  $('#loading').hidden=false; $('#loading').textContent='Procesando el reporte…';
+  await new Promise(r=>setTimeout(r,50));
+  try{
+    if(typeof XLSX==='undefined') throw new Error('No se pudo cargar el lector de Excel. Revise la conexión e intente de nuevo.');
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const raw=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});
+    if(!raw.length) throw new Error('La primera hoja está vacía.');
+    const norm=r=>{ const o={}; for(const k in r) o[k.trim()]=r[k]; return o; };
+    const first=norm(raw[0]); const miss=REQ.filter(c=>!(c in first));
+    if(miss.length) throw new Error('Faltan columnas del reporte “Seguimiento de Solpeds”: '+miss.join(', '));
+    const num=v=>v==null||v===''?null:(typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'')));
+    const L=[];
+    for(const r0 of raw){ const r=norm(r0); if(!r['Solped']) continue;
+      const oc=r['OC ERP']; L.push({est:String(r['Estado']||''),sp:String(r['Solped']),clu:String(r['Clúster']||''),suc:String(r['Sucursal']||''),tipo:String(r['Tipo Solicitud']||''),cat:String(r['Categoría']||''),comp:String(r['Comprador(a)']||''),prov:String(r['Proveedor']||''),cod:String(r['Código']||''),item:String(r['Nombre de Item']||''),
+        tSP:toMin(r['Fecha solped.']),tAp:toMin(r['Fecha Aprob']),fAt:toDay(r['Fecha atención comprador']),tPre:toMin(r['Fecha Preorden']),tPr:toMin(r['Fecha Aprob Precio']),tA1:toMin(r['Fecha Aprob 1 OC']),tA2:toMin(r['Fecha Aprob 2 OC']),tOC:toMin(r['Fecha OC']),oc:(oc==null||oc==='')?null:String(Math.round(num(oc))),fEnt:toDay(r['Fecha de entrega']),tIng:toMin(r['Ult. Fecha Ingr. Bod']),
+        qOC:num(r['Cant. Orden Compra'])||0,qIng:num(r['Cant. Ingreso'])||0,qPend:num(r['Cantidad Pendiente'])||0}); derive(L[L.length-1]); }
+    const model=buildModel(L);
+    setModel(model, `${f.name} (cargado ${new Date().toLocaleDateString('es-EC')})`, model.maxD);
+    LAST={L, fuente:f.name, corte:model.maxD}; $('#pubBar').hidden=!API; $('#pubMsg').textContent='';
+    msg.textContent=`Reporte cargado: ${n0(L.length)} líneas. Fecha de corte ajustada a ${dstr(model.maxD)}, la fecha más reciente del archivo; puede cambiarla arriba.`;
+  }catch(err){ msg.className='msg err'; msg.textContent='No se pudo cargar el archivo. '+err.message; }
+  finally{ $('#loading').hidden=true; e.target.value=''; }
+};
+
+(async function init(){
+  try{
+    const D=await loadData();
+    const model=buildModel(fromColumnar(D));
+    try{ const t=localStorage.getItem('tab'); if(t&&RENDER[t]){ S.tab=t; document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.id==='t-'+t)); document.querySelectorAll('section.panel').forEach(p=>p.hidden=p.id!=='p-'+t);} }catch(_){}
+    setModel(model, D.fuente, D.corte);
+  }catch(err){
+    $('#src').textContent='Sin datos publicados todavía.';
+    $('#p-cump').innerHTML='<div class="card"><h2>Aún no hay datos publicados</h2><p class="sub">El administrador debe cargar el Excel “Seguimiento de Solpeds” con “Cargar reporte nuevo” y luego presionar “Publicar para todos”.</p></div>';
+  }
+  finally{ $('#loading').hidden=true; }
+})();
+</script>
+</body>
+</html>

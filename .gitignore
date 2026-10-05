@@ -1,0 +1,11 @@
+# Reportes originales de SAP: no se suben al repositorio
+*.xlsx
+*.xls
+*.csv
+__pycache__/
+.venv/
+.DS_Store
+.wrangler/
+.dev.vars
+node_modules/
+wrangler.test.jsonc
