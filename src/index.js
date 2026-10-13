@@ -1,12 +1,16 @@
 // Worker del tablero de compras.
 // - Sirve los archivos de ./public (tablero y data.json).
 // - /api/datos  GET: datos publicados (KV "DATOS").  PUT: publica datos nuevos con la clave ADMIN_KEY.
+// - /api/fuente GET: Excel "Seguimiento de Solpeds" compartido con dashboard-compras y
+//                reporte-proveedores (bucket R2 enlazado como FUENTE). Se publica solo desde
+//                el Administrador de dashboard-compras; el tablero lo usa antes que /api/datos.
 const H = { 'x-tablero-api': '1', 'cache-control': 'no-store' };
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/datos') return api(request, env);
+    if (url.pathname === '/api/fuente') return fuente(request, env);
     return env.ASSETS.fetch(request);
   },
 };
@@ -31,6 +35,15 @@ async function api(request, env) {
     return new Response(JSON.stringify({ ok: true, n: d.n }), { headers: { ...H, 'content-type': 'application/json' } });
   }
   return new Response('Método no permitido', { status: 405, headers: { ...H, allow: 'GET, PUT' } });
+}
+
+async function fuente(request, env) {
+  const h = { ...H, 'x-fuente-comun': '1', 'content-type': 'application/json; charset=utf-8' };
+  if (request.method !== 'GET') return new Response(JSON.stringify({ error: 'El Excel se publica desde dashboard-compras.' }), { status: 405, headers: { ...h, allow: 'GET' } });
+  if (!env.FUENTE) return new Response(JSON.stringify({ error: 'Falta enlazar el bucket R2 FUENTE.' }), { status: 500, headers: h });
+  const obj = await env.FUENTE.get('fuente-comun.json');
+  if (!obj) return new Response(JSON.stringify({ error: 'Todavía no se ha publicado el Excel compartido.' }), { status: 404, headers: h });
+  return new Response(obj.body, { headers: { ...h, 'x-fuente-publicado': obj.customMetadata?.publicado || obj.uploaded.toISOString() } });
 }
 
 async function igual(a, b) {
