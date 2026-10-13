@@ -22,8 +22,8 @@ COLS = {
     'Cantidad Pendiente': 'n',
 }
 # Nombres nuevos del reporte -> nombre interno (se aceptan ambos)
-ALIAS = {'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}
-NOMBRE = {v: k for k, v in ALIAS.items()}
+ALIAS = {'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Ult. Fecha Ingr': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}
+NOMBRE = {'Ult. Fecha Ingr. Bod': 'Ult. Ingr.', 'Cantidad Pendiente': 'Cant. Pendiente'}
 EPOCH = pd.Timestamp('1970-01-01')
 BASE_MIN = int((pd.Timestamp('2025-01-01') - EPOCH).total_seconds() // 60)  # minutos; divisible para 10
 

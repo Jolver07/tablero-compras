@@ -135,7 +135,7 @@ tr.total td{font-weight:600;background:var(--accent-soft)}
       <label class="f" for="corte">Fecha de corte<input type="date" id="corte"></label>
       <label class="f" for="umbral">Por vencer (días)<input type="number" id="umbral" min="0" max="60" value="3"></label>
       <input type="file" id="file" accept=".xlsx,.xls" hidden>
-      <button class="btn" id="btnLoad" type="button" title="Abre el Excel “Seguimiento de Solpeds” en su navegador">Cargar reporte nuevo</button>
+      <button class="btn" id="btnLoad" type="button" title="Abre el Excel “Seguimiento de Solpeds” en su navegador" hidden>Cargar reporte nuevo</button>
     </div>
   </header>
   <div class="msg" id="loadMsg" hidden></div>
@@ -178,6 +178,7 @@ tr.total td{font-weight:600;background:var(--accent-soft)}
 <div id="loading">Cargando 82.702 líneas de SOLPED…</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="fuente-comun.js"></script>
 <script>
 "use strict";
 /* ============================ utilidades ============================ */
@@ -700,7 +701,7 @@ function toDay(v){
   const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/DAY);
 }
 // Nombres de columna del reporte: los nuevos (Ult. Ingr., Cant. Pendiente) y los anteriores se aceptan por igual.
-const ALIAS={'Ult. Ingr.':'Ult. Fecha Ingr. Bod','Cant. Pendiente':'Cantidad Pendiente'};
+const ALIAS={'Ult. Ingr.':'Ult. Fecha Ingr. Bod','Ult. Fecha Ingr':'Ult. Fecha Ingr. Bod','Cant. Pendiente':'Cantidad Pendiente'};
 const NOMBRE={'Ult. Fecha Ingr. Bod':'Ult. Ingr.','Cantidad Pendiente':'Cant. Pendiente'};
 function toMin(v){
   if(v==null||v==='') return null;
@@ -708,6 +709,21 @@ function toMin(v){
   if(v instanceof Date){ if(isNaN(v)) return null; return Math.floor(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate(),v.getHours(),v.getMinutes())/6e4); }
   if(typeof v==='number') return Math.floor((v-25569)*1440);
   const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/6e4);
+}
+/* filas del Excel (sheet_to_json con defval:null) -> líneas del modelo. La usan
+   "Cargar reporte nuevo" y el Excel compartido publicado desde dashboard-compras. */
+function lineasDesdeFilas(raw){
+  if(!raw.length) throw new Error('El reporte no tiene filas.');
+  const norm=r=>{ const o={}; for(const k in r) o[k.trim()]=r[k]; for(const a in ALIAS) if(a in o && !(ALIAS[a] in o)) o[ALIAS[a]]=o[a]; return o; };
+  const first=norm(raw[0]); const miss=REQ.filter(c=>!(c in first));
+  if(miss.length) throw new Error('Faltan columnas del reporte “Seguimiento de Solpeds”: '+miss.map(c=>NOMBRE[c]||c).join(', '));
+  const num=v=>v==null||v===''?null:(typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'')));
+  const L=[];
+  for(const r0 of raw){ const r=norm(r0); if(!r['Solped']) continue;
+    const oc=r['OC ERP']; L.push({est:String(r['Estado']||''),sp:String(r['Solped']),clu:String(r['Clúster']||''),suc:String(r['Sucursal']||''),tipo:String(r['Tipo Solicitud']||''),cat:String(r['Categoría']||''),comp:String(r['Comprador(a)']||''),prov:String(r['Proveedor']||''),cod:String(r['Código']||''),item:String(r['Nombre de Item']||''),
+      tSP:toMin(r['Fecha solped.']),tAp:toMin(r['Fecha Aprob']),fAt:toDay(r['Fecha atención comprador']),tPre:toMin(r['Fecha Preorden']),tPr:toMin(r['Fecha Aprob Precio']),tA1:toMin(r['Fecha Aprob 1 OC']),tA2:toMin(r['Fecha Aprob 2 OC']),tOC:toMin(r['Fecha OC']),oc:(oc==null||oc==='')?null:String(Math.round(num(oc))),fEnt:toDay(r['Fecha de entrega']),tIng:toMin(r['Ult. Fecha Ingr. Bod']),
+      qOC:num(r['Cant. Orden Compra'])||0,qIng:num(r['Cant. Ingreso'])||0,qPend:num(r['Cantidad Pendiente'])||0}); derive(L[L.length-1]); }
+  return L;
 }
 $('#btnLoad').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{
@@ -722,15 +738,7 @@ $('#file').onchange=async e=>{
     const ws=wb.Sheets[wb.SheetNames[0]];
     const raw=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});
     if(!raw.length) throw new Error('La primera hoja está vacía.');
-    const norm=r=>{ const o={}; for(const k in r) o[k.trim()]=r[k]; for(const a in ALIAS) if(a in o && !(ALIAS[a] in o)) o[ALIAS[a]]=o[a]; return o; };
-    const first=norm(raw[0]); const miss=REQ.filter(c=>!(c in first));
-    if(miss.length) throw new Error('Faltan columnas del reporte “Seguimiento de Solpeds”: '+miss.map(c=>NOMBRE[c]||c).join(', '));
-    const num=v=>v==null||v===''?null:(typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'')));
-    const L=[];
-    for(const r0 of raw){ const r=norm(r0); if(!r['Solped']) continue;
-      const oc=r['OC ERP']; L.push({est:String(r['Estado']||''),sp:String(r['Solped']),clu:String(r['Clúster']||''),suc:String(r['Sucursal']||''),tipo:String(r['Tipo Solicitud']||''),cat:String(r['Categoría']||''),comp:String(r['Comprador(a)']||''),prov:String(r['Proveedor']||''),cod:String(r['Código']||''),item:String(r['Nombre de Item']||''),
-        tSP:toMin(r['Fecha solped.']),tAp:toMin(r['Fecha Aprob']),fAt:toDay(r['Fecha atención comprador']),tPre:toMin(r['Fecha Preorden']),tPr:toMin(r['Fecha Aprob Precio']),tA1:toMin(r['Fecha Aprob 1 OC']),tA2:toMin(r['Fecha Aprob 2 OC']),tOC:toMin(r['Fecha OC']),oc:(oc==null||oc==='')?null:String(Math.round(num(oc))),fEnt:toDay(r['Fecha de entrega']),tIng:toMin(r['Ult. Fecha Ingr. Bod']),
-        qOC:num(r['Cant. Orden Compra'])||0,qIng:num(r['Cant. Ingreso'])||0,qPend:num(r['Cantidad Pendiente'])||0}); derive(L[L.length-1]); }
+    const L=lineasDesdeFilas(raw);
     const model=buildModel(L);
     setModel(model, `${f.name} (cargado ${new Date().toLocaleDateString('es-EC')})`, model.maxD);
     LAST={L, fuente:f.name, corte:model.maxD}; $('#pubBar').hidden=!API; $('#pubMsg').textContent='';
@@ -741,13 +749,24 @@ $('#file').onchange=async e=>{
 
 (async function init(){
   try{
-    const D=await loadData();
-    const model=buildModel(fromColumnar(D));
+    // 1) Excel compartido (se publica una sola vez desde el Administrador de dashboard-compras).
+    // 2) Si aún no existe: datos publicados aquí antes (/api/datos) o public/data.json.
+    const F=await FuenteComun.cargar().catch(e=>{ console.warn('Excel compartido no disponible.', e); return null; });
+    let model, fuente, corte;
+    if(F){
+      model=buildModel(lineasDesdeFilas(FuenteComun.aObjetos(F)));
+      const pub=F.publicado?new Date(F.publicado):null;
+      fuente=`${F.archivo}`+(pub?` – publicado ${pub.toLocaleDateString('es-EC')} ${pub.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}`:'');
+      corte=model.maxD;
+    } else {
+      const D=await loadData();
+      model=buildModel(fromColumnar(D)); fuente=D.fuente; corte=D.corte;
+    }
     try{ const t=localStorage.getItem('tab'); if(t&&RENDER[t]){ S.tab=t; document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x.id==='t-'+t)); document.querySelectorAll('section.panel').forEach(p=>p.hidden=p.id!=='p-'+t);} }catch(_){}
-    setModel(model, D.fuente, D.corte);
+    setModel(model, fuente, corte);
   }catch(err){
     $('#src').textContent='Sin datos publicados todavía.';
-    $('#p-cump').innerHTML='<div class="card"><h2>Aún no hay datos publicados</h2><p class="sub">El administrador debe cargar el Excel “Seguimiento de Solpeds” con “Cargar reporte nuevo” y luego presionar “Publicar para todos”.</p></div>';
+    $('#p-cump').innerHTML='<div class="card"><h2>Aún no hay datos publicados</h2><p class="sub">El administrador debe publicar el Excel “Seguimiento de Solpeds” desde el Administrador del Dashboard de compras; este tablero se actualiza solo.</p></div>';
   }
   finally{ $('#loading').hidden=true; }
 })();

@@ -10,6 +10,11 @@
   },
   // Almacenamiento de los datos publicados con "Publicar para todos".
   // La clave de administrador va como secreto ADMIN_KEY en Settings → Variables and Secrets (no aquí).
+  // Excel compartido con dashboard-compras y reporte-proveedores (solo lectura).
+  // Es el mismo bucket R2 del Worker dashboard-compras, que es donde se publica.
+  "r2_buckets": [
+    { "binding": "FUENTE", "bucket_name": "dashboard-compras-data" }
+  ],
   "kv_namespaces": [
     { "binding": "DATOS", "id": "94346c9102c34e66a75cba01a2752a3f" }
   ]
