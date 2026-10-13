@@ -22,7 +22,7 @@ COLS = {
     'Cantidad Pendiente': 'n',
 }
 # Nombres nuevos del reporte -> nombre interno (se aceptan ambos)
-ALIAS = {'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Ult. Fecha Ingr': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}
+ALIAS = {'Ult. Fecha Ingr': 'Ult. Fecha Ingr. Bod', 'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}  # la fecha primero
 NOMBRE = {'Ult. Fecha Ingr. Bod': 'Ult. Ingr.', 'Cantidad Pendiente': 'Cant. Pendiente'}
 EPOCH = pd.Timestamp('1970-01-01')
 BASE_MIN = int((pd.Timestamp('2025-01-01') - EPOCH).total_seconds() // 60)  # minutos; divisible para 10
@@ -38,7 +38,11 @@ def main():
     print(f'Leyendo {a.reporte} …')
     df = pd.read_excel(a.reporte)
     df.columns = [str(c).strip() for c in df.columns]
-    df = df.rename(columns={a: b for a, b in ALIAS.items() if a in df.columns and b not in df.columns})
+    ren = {}
+    for a, b in ALIAS.items():   # el primer nombre que exista gana
+        if a in df.columns and b not in df.columns and b not in ren.values():
+            ren[a] = b
+    df = df.rename(columns=ren)
     faltan = [c for c in COLS if c not in df.columns]
     if faltan:
         sys.exit('ERROR: al reporte le faltan columnas: ' + ', '.join(NOMBRE.get(c, c) for c in faltan))
