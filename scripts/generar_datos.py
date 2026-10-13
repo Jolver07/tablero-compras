@@ -21,6 +21,9 @@ COLS = {
     'Fecha de entrega': 'd', 'Ult. Fecha Ingr. Bod': 'ts', 'Cant. Orden Compra': 'n', 'Cant. Ingreso': 'n',
     'Cantidad Pendiente': 'n',
 }
+# Nombres nuevos del reporte -> nombre interno (se aceptan ambos)
+ALIAS = {'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}
+NOMBRE = {v: k for k, v in ALIAS.items()}
 EPOCH = pd.Timestamp('1970-01-01')
 BASE_MIN = int((pd.Timestamp('2025-01-01') - EPOCH).total_seconds() // 60)  # minutos; divisible para 10
 
@@ -35,9 +38,10 @@ def main():
     print(f'Leyendo {a.reporte} …')
     df = pd.read_excel(a.reporte)
     df.columns = [str(c).strip() for c in df.columns]
+    df = df.rename(columns={a: b for a, b in ALIAS.items() if a in df.columns and b not in df.columns})
     faltan = [c for c in COLS if c not in df.columns]
     if faltan:
-        sys.exit('ERROR: al reporte le faltan columnas: ' + ', '.join(faltan))
+        sys.exit('ERROR: al reporte le faltan columnas: ' + ', '.join(NOMBRE.get(c, c) for c in faltan))
     df = df[df['Solped'].notna()].copy()          # quita la fila de totales
 
     out = {'n': int(len(df)), 'cols': {}}
@@ -49,7 +53,10 @@ def main():
             cat = pd.Categorical(s)
             out['cols'][c] = {'t': 's', 'dict': list(cat.categories), 'v': cat.codes.tolist()}
         elif t in ('d', 'ts'):
-            s = pd.to_datetime(s, errors='coerce', dayfirst=True)
+            if pd.api.types.is_numeric_dtype(s):   # fechas como número de serie de Excel
+                s = pd.to_datetime(s.where((s >= 1) & (s <= 100000)), unit='D', origin='1899-12-30', errors='coerce')
+            else:
+                s = pd.to_datetime(s, errors='coerce', dayfirst=True)
             if c in ('Fecha solped.', 'Fecha OC', 'Ult. Fecha Ingr. Bod') and s.notna().any():
                 fechas_max.append(s.max())
             if t == 'd':

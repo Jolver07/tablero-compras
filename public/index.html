@@ -699,8 +699,12 @@ function toDay(v){
   if(typeof v==='number') return Math.floor(v-25569);
   const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/DAY);
 }
+// Nombres de columna del reporte: los nuevos (Ult. Ingr., Cant. Pendiente) y los anteriores se aceptan por igual.
+const ALIAS={'Ult. Ingr.':'Ult. Fecha Ingr. Bod','Cant. Pendiente':'Cantidad Pendiente'};
+const NOMBRE={'Ult. Fecha Ingr. Bod':'Ult. Ingr.','Cantidad Pendiente':'Cant. Pendiente'};
 function toMin(v){
   if(v==null||v==='') return null;
+  if(typeof v==='number' && (v<1 || v>100000)) return null; // no es una fecha (p. ej. número de documento)
   if(v instanceof Date){ if(isNaN(v)) return null; return Math.floor(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate(),v.getHours(),v.getMinutes())/6e4); }
   if(typeof v==='number') return Math.floor((v-25569)*1440);
   const t=Date.parse(v); return isNaN(t)?null:Math.floor(t/6e4);
@@ -718,9 +722,9 @@ $('#file').onchange=async e=>{
     const ws=wb.Sheets[wb.SheetNames[0]];
     const raw=XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});
     if(!raw.length) throw new Error('La primera hoja está vacía.');
-    const norm=r=>{ const o={}; for(const k in r) o[k.trim()]=r[k]; return o; };
+    const norm=r=>{ const o={}; for(const k in r) o[k.trim()]=r[k]; for(const a in ALIAS) if(a in o && !(ALIAS[a] in o)) o[ALIAS[a]]=o[a]; return o; };
     const first=norm(raw[0]); const miss=REQ.filter(c=>!(c in first));
-    if(miss.length) throw new Error('Faltan columnas del reporte “Seguimiento de Solpeds”: '+miss.join(', '));
+    if(miss.length) throw new Error('Faltan columnas del reporte “Seguimiento de Solpeds”: '+miss.map(c=>NOMBRE[c]||c).join(', '));
     const num=v=>v==null||v===''?null:(typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'')));
     const L=[];
     for(const r0 of raw){ const r=norm(r0); if(!r['Solped']) continue;

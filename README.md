@@ -114,8 +114,10 @@ Si usa la opción A, los datos publicados desde el tablero tienen prioridad sobr
 
 `Estado, Solped, Clúster, Sucursal, Tipo Solicitud, Categoría, Comprador(a), Proveedor, Código, Nombre de Item,
 Fecha solped., Fecha Aprob, Fecha atención comprador, Fecha Preorden, Fecha Aprob Precio, Fecha Aprob 1 OC,
-Fecha Aprob 2 OC, Fecha OC, OC ERP, Fecha de entrega, Ult. Fecha Ingr. Bod, Cant. Orden Compra, Cant. Ingreso,
-Cantidad Pendiente`
+Fecha Aprob 2 OC, Fecha OC, OC ERP, Fecha de entrega, Ult. Ingr., Cant. Orden Compra, Cant. Ingreso,
+Cant. Pendiente`
+
+También se aceptan los nombres anteriores de esas dos columnas (`Ult. Fecha Ingr. Bod` y `Cantidad Pendiente`), así que sirven reportes viejos y nuevos.
 
 ## Definiciones principales
 
