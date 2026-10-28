@@ -151,6 +151,7 @@ tr.total td{font-weight:600;background:var(--accent-soft)}
     <label class="f">Tipo de solicitud<div class="ms" id="ms-tipo"></div></label>
     <label class="f">Clúster<div class="ms" id="ms-clu"></div></label>
     <label class="f">Categoría<div class="ms" id="ms-cat"></div></label>
+    <label class="f">Grupo de materiales<div class="ms" id="ms-gm"></div></label>
     <label class="f" for="d1">SOLPED desde<input type="date" id="d1"></label>
     <label class="f" for="d2">SOLPED hasta<input type="date" id="d2"></label>
     <label class="f" for="fsp">N.º SOLPED<input type="search" id="fsp" placeholder="Ej.: SP202604-00941, 00942" style="width:230px"></label>
@@ -204,7 +205,7 @@ const mean = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : null;
 const PRE = {'PENDIENTE':'SOLPED por aprobar','CODIGO PENDIENTE':'SOLPED por aprobar','CANTIDAD APROBADA':'En gestión de compras','PETICIÓN DE OFERTAS':'En gestión de compras','COTIZADO':'En gestión de compras','PRECIO APROBADO':'OC en aprobación','OC APROBADA':'OC en aprobación'};
 const REQ = ['Estado','Solped','Clúster','Sucursal','Tipo Solicitud','Fecha solped.','Fecha Aprob','Fecha OC','OC ERP','Fecha de entrega','Ult. Fecha Ingr. Bod','Cant. Orden Compra','Cant. Ingreso','Cantidad Pendiente'];
 let M = null;           // modelo
-let S = {corte:null, umbral:3, suc:null, tipo:null, clu:null, cat:null, sp:null, d1:null, d2:null, tab:'cump'};
+let S = {corte:null, umbral:3, suc:null, tipo:null, clu:null, cat:null, gm:null, sp:null, d1:null, d2:null, tab:'cump'};
 
 /* Reorganización de clústeres. El sistema fue moviendo sucursales de un clúster a otro
    (Lanconor y Solcamarón pasaron a "El Oro" desde agosto de 2026; Coaque y Juananu a
@@ -233,6 +234,7 @@ function buildModel(L){
   for(const l of L){
     l.clu = clusterActual(l.clu, l.suc);
     l.cat = CATN[l.cat] || l.cat || '(sin categoría)';
+    l.gm = (l.gm && String(l.gm).trim()) || '(sin grupo)';
     l.pre = PRE[l.est] || null;
     l.aprob = l.fAp!=null;
     l.atend = (l.oc!=null && l.est!=='OC ANULADA') || l.est==='CONTRATO GENERADO' || l.est==='CONTRATO MARCO';
@@ -263,7 +265,7 @@ function buildModel(L){
   }
   const uniq = k => { const m=new Map(); for(const l of L){ m.set(l[k],(m.get(l[k])||0)+1);} return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]); };
   let maxD = 0; for(const l of L){ for(const d of [l.fSP,l.fIng,l.fOC]) if(d!=null&&d>maxD) maxD=d; }
-  return {L, ocs:[...ocs.values()], dims:{suc:uniq('suc'), tipo:uniq('tipo'), clu:uniq('clu'), cat:uniq('cat')}, maxD};
+  return {L, ocs:[...ocs.values()], dims:{suc:uniq('suc'), tipo:uniq('tipo'), clu:uniq('clu'), cat:uniq('cat'), gm:uniq('gm')}, maxD};
 }
 
 /* plazo por corte */
@@ -277,7 +279,7 @@ function plazo(l){
 const RANK = {'Vencida':4,'Sin fecha':3,'Por vencer':2,'Dentro del plazo':1};
 
 /* ============================ filtros ============================ */
-const pass = x => (!S.suc||S.suc.has(x.suc)) && (!S.tipo||S.tipo.has(x.tipo)) && (!S.clu||S.clu.has(x.clu)) && (!S.cat||S.cat.has(x.cat)) && (!S.sp||S.sp.some(t=>x.sp.includes(t))) && (S.d1==null||(x.fSP!=null&&x.fSP>=S.d1)) && (S.d2==null||(x.fSP!=null&&x.fSP<=S.d2));
+const pass = x => (!S.suc||S.suc.has(x.suc)) && (!S.tipo||S.tipo.has(x.tipo)) && (!S.clu||S.clu.has(x.clu)) && (!S.cat||S.cat.has(x.cat)) && (!S.gm||(x.lines?x.lines.some(l=>S.gm.has(l.gm)):S.gm.has(x.gm))) && (!S.sp||S.sp.some(t=>x.sp.includes(t))) && (S.d1==null||(x.fSP!=null&&x.fSP>=S.d1)) && (S.d2==null||(x.fSP!=null&&x.fSP<=S.d2));
 function filtered(){ return {L:M.L.filter(pass), O:M.ocs.filter(pass)}; }
 
 const MS = {};
@@ -292,7 +294,7 @@ function makeMS(id,key,label){
     // conteos dinámicos con los otros filtros
     const other = {...S}; other[key]=null;
     const cnt=new Map();
-    for(const l of M.L){ if((key==='suc'||!other.suc||other.suc.has(l.suc))&&(key==='tipo'||!other.tipo||other.tipo.has(l.tipo))&&(key==='clu'||!other.clu||other.clu.has(l.clu))&&(key==='cat'||!other.cat||other.cat.has(l.cat))&&(!S.sp||S.sp.some(t=>l.sp.includes(t)))&&(S.d1==null||(l.fSP!=null&&l.fSP>=S.d1))&&(S.d2==null||(l.fSP!=null&&l.fSP<=S.d2))) cnt.set(l[key],(cnt.get(l[key])||0)+1); }
+    for(const l of M.L){ if((key==='suc'||!other.suc||other.suc.has(l.suc))&&(key==='tipo'||!other.tipo||other.tipo.has(l.tipo))&&(key==='clu'||!other.clu||other.clu.has(l.clu))&&(key==='cat'||!other.cat||other.cat.has(l.cat))&&(key==='gm'||!other.gm||other.gm.has(l.gm))&&(!S.sp||S.sp.some(t=>l.sp.includes(t)))&&(S.d1==null||(l.fSP!=null&&l.fSP>=S.d1))&&(S.d2==null||(l.fSP!=null&&l.fSP<=S.d2))) cnt.set(l[key],(cnt.get(l[key])||0)+1); }
     const term=q.value.trim().toLowerCase();
     const vals=M.dims[key].filter(v=>!term||String(v).toLowerCase().includes(term)).sort((a,b)=>(cnt.get(b)||0)-(cnt.get(a)||0));
     list.innerHTML=vals.map((v,i)=>{ const c=cnt.get(v)||0; const ch=!S[key]||S[key].has(v); return `<label class="${c?'':'zero'}"><input type="checkbox" data-v="${esc(v)}" ${ch?'checked':''}> <span>${esc(v||'(vacío)')}</span><span class="cnt">${n0(c)}</span></label>`; }).join('');
@@ -320,10 +322,10 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
 function chips(){
   const parts=[];
   const add=(lab,set)=>{ if(set) parts.push(`<b>${lab}:</b> ${set.size? esc([...set].slice(0,3).join(', '))+(set.size>3?` +${set.size-3}`:'') : 'ninguna'}`); };
-  add('Sucursal',S.suc); add('Tipo',S.tipo); add('Clúster',S.clu); add('Categoría',S.cat);
+  add('Sucursal',S.suc); add('Tipo',S.tipo); add('Clúster',S.clu); add('Categoría',S.cat); add('Grupo de materiales',S.gm);
   if(S.sp) parts.push(`<b>N.º SOLPED:</b> ${esc(S.sp.join(', '))}`);
   if(S.d1!=null||S.d2!=null) parts.push(`<b>SOLPED:</b> ${S.d1!=null?dstr(S.d1):'inicio'} – ${S.d2!=null?dstr(S.d2):'fin'}`);
-  $('#chips').innerHTML = parts.length? 'Filtros activos · '+parts.join(' · ') : 'Sin filtros: se muestran todas las sucursales, tipos de solicitud, clústeres y categorías.';
+  $('#chips').innerHTML = parts.length? 'Filtros activos · '+parts.join(' · ') : 'Sin filtros: se muestran todas las sucursales, tipos de solicitud, clústeres, categorías y grupos de materiales.';
 }
 
 /* ============================ tooltip ============================ */
@@ -651,13 +653,13 @@ $('#umbral').onchange=e=>{ const v=Math.max(0,Math.min(60,parseInt(e.target.valu
 let spT; $('#fsp').oninput=e=>{ clearTimeout(spT); spT=setTimeout(()=>{ const t=e.target.value.toUpperCase().split(/[\s,;]+/).filter(Boolean); S.sp=t.length?t:null; for(const k in TB) TB[k].page=0; refresh(); },250); };
 $('#d1').onchange=e=>{ S.d1=fromIso(e.target.value); refresh(); };
 $('#d2').onchange=e=>{ S.d2=fromIso(e.target.value); refresh(); };
-$('#btnClear').onclick=()=>{ S.suc=S.tipo=S.clu=S.cat=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null; $('#d1').value=$('#d2').value=''; Object.values(MS).forEach(m=>m.sync()); refresh(); };
+$('#btnClear').onclick=()=>{ S.suc=S.tipo=S.clu=S.cat=S.gm=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null; $('#d1').value=$('#d2').value=''; Object.values(MS).forEach(m=>m.sync()); refresh(); };
 
 function setModel(model, fuente, corte){
-  M=model; S.corte=corte; S.suc=S.tipo=S.clu=S.cat=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null;
+  M=model; S.corte=corte; S.suc=S.tipo=S.clu=S.cat=S.gm=S.sp=null; $('#fsp').value=''; S.d1=S.d2=null;
   $('#corte').value=diso(corte); $('#d1').value=$('#d2').value='';
   $('#src').textContent=`${fuente} · ${n0(M.L.length)} líneas de SOLPED · ${n0(M.ocs.length)} OC · días calendario`;
-  makeMS('suc','suc','Sucursal'); makeMS('tipo','tipo','Tipo de solicitud'); makeMS('clu','clu','Clúster'); makeMS('cat','cat','Categoría');
+  makeMS('suc','suc','Sucursal'); makeMS('tipo','tipo','Tipo de solicitud'); makeMS('clu','clu','Clúster'); makeMS('cat','cat','Categoría'); makeMS('gm','gm','Grupo de materiales');
   for(const k in TB) delete TB[k];
   refresh();
 }
@@ -668,7 +670,7 @@ function derive(o){ o.fSP=mday(o.tSP); o.fAp=mday(o.tAp); o.fPr=mday(o.tPr); o.f
 function fromColumnar(D){
   const C=D.cols, n=D.n;
   const col=(name)=>{ const c=C[name]; if(!c) return ()=>null; if(c.t==='s') return i=>c.dict[c.v[i]] ?? ''; if(c.t==='ts'){ const b=c.base/c.u; return i=>c.v[i]==null?null:(c.v[i]+b)*c.u; } return i=>c.v[i]; };
-  const g={est:col('Estado'),sp:col('Solped'),clu:col('Clúster'),suc:col('Sucursal'),tipo:col('Tipo Solicitud'),cat:col('Categoría'),comp:col('Comprador(a)'),prov:col('Proveedor'),cod:col('Código'),item:col('Nombre de Item'),
+  const g={est:col('Estado'),sp:col('Solped'),clu:col('Clúster'),suc:col('Sucursal'),tipo:col('Tipo Solicitud'),cat:col('Categoría'),gm:col('Grupo de artículo'),comp:col('Comprador(a)'),prov:col('Proveedor'),cod:col('Código'),item:col('Nombre de Item'),
     tSP:col('Fecha solped.'),tAp:col('Fecha Aprob'),fAt:col('Fecha atención comprador'),tPre:col('Fecha Preorden'),tPr:col('Fecha Aprob Precio'),tA1:col('Fecha Aprob 1 OC'),tA2:col('Fecha Aprob 2 OC'),tOC:col('Fecha OC'),oc:col('OC ERP'),fEnt:col('Fecha de entrega'),tIng:col('Ult. Fecha Ingr. Bod'),qOC:col('Cant. Orden Compra'),qIng:col('Cant. Ingreso'),qPend:col('Cantidad Pendiente')};
   const L=new Array(n);
   for(let i=0;i<n;i++){ const o={}; for(const k in g) o[k]=g[k](i); if(o.oc!=null) o.oc=String(o.oc); derive(o); L[i]=o; }
@@ -677,7 +679,7 @@ function fromColumnar(D){
 
 /* publicación compartida (Cloudflare Pages Functions + KV) */
 let API=false, LAST=null;
-const COLMAP=[['Estado','s','est'],['Solped','s','sp'],['Clúster','s','clu'],['Sucursal','s','suc'],['Tipo Solicitud','s','tipo'],['Categoría','s','cat'],['Comprador(a)','s','comp'],['Proveedor','s','prov'],['Código','s','cod'],['Nombre de Item','s','item'],
+const COLMAP=[['Estado','s','est'],['Solped','s','sp'],['Clúster','s','clu'],['Sucursal','s','suc'],['Tipo Solicitud','s','tipo'],['Categoría','s','cat'],['Grupo de artículo','s','gm'],['Comprador(a)','s','comp'],['Proveedor','s','prov'],['Código','s','cod'],['Nombre de Item','s','item'],
   ['Fecha solped.','ts','tSP'],['Fecha Aprob','ts','tAp'],['Fecha atención comprador','d','fAt'],['Fecha Preorden','ts','tPre'],['Fecha Aprob Precio','ts','tPr'],['Fecha Aprob 1 OC','ts','tA1'],['Fecha Aprob 2 OC','ts','tA2'],['Fecha OC','ts','tOC'],['OC ERP','n','oc'],
   ['Fecha de entrega','d','fEnt'],['Ult. Fecha Ingr. Bod','ts','tIng'],['Cant. Orden Compra','n','qOC'],['Cant. Ingreso','n','qIng'],['Cantidad Pendiente','n','qPend']];
 function toColumnar(L, fuente, corte){
@@ -724,7 +726,7 @@ function toDay(v){
 // Nombres de columna del reporte: los nuevos (Ult. Ingr., Cant. Pendiente) y los anteriores se aceptan por igual.
 // Orden importante: el reporte actual trae "Ult. Fecha Ingr" (la fecha) y además "Ult. Ingr." (el número
 // del documento de ingreso). Gana el primer nombre que exista, así que la fecha va antes.
-const ALIAS={'Ult. Fecha Ingr':'Ult. Fecha Ingr. Bod','Ult. Ingr.':'Ult. Fecha Ingr. Bod','Cant. Pendiente':'Cantidad Pendiente'};
+const ALIAS={'Ult. Fecha Ingr':'Ult. Fecha Ingr. Bod','Ult. Ingr.':'Ult. Fecha Ingr. Bod','Cant. Pendiente':'Cantidad Pendiente','Grupo de materiales':'Grupo de artículo','Grupo de material':'Grupo de artículo'};
 const NOMBRE={'Ult. Fecha Ingr. Bod':'Ult. Ingr.','Cantidad Pendiente':'Cant. Pendiente'};
 function toMin(v){
   if(v==null||v==='') return null;
@@ -743,7 +745,7 @@ function lineasDesdeFilas(raw){
   const num=v=>v==null||v===''?null:(typeof v==='number'?v:parseFloat(String(v).replace(/,/g,'')));
   const L=[];
   for(const r0 of raw){ const r=norm(r0); if(!r['Solped']) continue;
-    const oc=r['OC ERP']; L.push({est:String(r['Estado']||''),sp:String(r['Solped']),clu:String(r['Clúster']||''),suc:String(r['Sucursal']||''),tipo:String(r['Tipo Solicitud']||''),cat:String(r['Categoría']||''),comp:String(r['Comprador(a)']||''),prov:String(r['Proveedor']||''),cod:String(r['Código']||''),item:String(r['Nombre de Item']||''),
+    const oc=r['OC ERP']; L.push({est:String(r['Estado']||''),sp:String(r['Solped']),clu:String(r['Clúster']||''),suc:String(r['Sucursal']||''),tipo:String(r['Tipo Solicitud']||''),cat:String(r['Categoría']||''),gm:String(r['Grupo de artículo']||''),comp:String(r['Comprador(a)']||''),prov:String(r['Proveedor']||''),cod:String(r['Código']||''),item:String(r['Nombre de Item']||''),
       tSP:toMin(r['Fecha solped.']),tAp:toMin(r['Fecha Aprob']),fAt:toDay(r['Fecha atención comprador']),tPre:toMin(r['Fecha Preorden']),tPr:toMin(r['Fecha Aprob Precio']),tA1:toMin(r['Fecha Aprob 1 OC']),tA2:toMin(r['Fecha Aprob 2 OC']),tOC:toMin(r['Fecha OC']),oc:(oc==null||oc==='')?null:String(Math.round(num(oc))),fEnt:toDay(r['Fecha de entrega']),tIng:toMin(r['Ult. Fecha Ingr. Bod']),
       qOC:num(r['Cant. Orden Compra'])||0,qIng:num(r['Cant. Ingreso'])||0,qPend:num(r['Cantidad Pendiente'])||0}); derive(L[L.length-1]); }
   return L;
