@@ -206,11 +206,32 @@ const REQ = ['Estado','Solped','Clúster','Sucursal','Tipo Solicitud','Fecha sol
 let M = null;           // modelo
 let S = {corte:null, umbral:3, suc:null, tipo:null, clu:null, cat:null, sp:null, d1:null, d2:null, tab:'cump'};
 
+/* Reorganización de clústeres. El sistema fue moviendo sucursales de un clúster a otro
+   (Lanconor y Solcamarón pasaron a "El Oro" desde agosto de 2026; Coaque y Juananu a
+   "Nortematex" desde julio). Para que todo el historial se vea bajo el clúster actual se
+   reasigna al armar el modelo, sea cual sea el origen de los datos. Mismas reglas que el
+   Dashboard de compras. Para agregar un cambio basta con añadir una línea:
+    - ALIAS_CLUSTER:    'Clúster viejo' -> 'Clúster nuevo'  (todo el clúster)
+    - SUCURSAL_CLUSTER: 'Sucursal'      -> 'Clúster nuevo'  (solo esa sucursal, venga en el
+                        clúster que venga; útil si el clúster viejo sigue vigente para otras). */
+const ALIAS_CLUSTER = { 'Lanconor':'El Oro', 'Solcamaron':'El Oro' };
+const SUCURSAL_CLUSTER = { 'Coaque':'Nortematex', 'Juananu':'Nortematex' };
+function clusterActual(clu, suc){
+  const has=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  let c = clu;
+  const a = typeof clu==='string' ? clu.trim() : '';
+  if(a && has(ALIAS_CLUSTER,a)) c = ALIAS_CLUSTER[a];
+  const s = typeof suc==='string' ? suc.trim() : '';
+  if(s && has(SUCURSAL_CLUSTER,s)) c = SUCURSAL_CLUSTER[s];
+  return c;
+}
+
 function buildModel(L){
   // L: array de líneas normalizadas
   const ocs = new Map();
   const CATN={'MATERIAL':'Material','SERVICIO':'Servicio','ACTIVO':'Activo'};
   for(const l of L){
+    l.clu = clusterActual(l.clu, l.suc);
     l.cat = CATN[l.cat] || l.cat || '(sin categoría)';
     l.pre = PRE[l.est] || null;
     l.aprob = l.fAp!=null;
