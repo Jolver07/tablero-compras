@@ -21,8 +21,11 @@ COLS = {
     'Fecha de entrega': 'd', 'Ult. Fecha Ingr. Bod': 'ts', 'Cant. Orden Compra': 'n', 'Cant. Ingreso': 'n',
     'Cantidad Pendiente': 'n',
 }
+# Columnas que se incluyen solo si el reporte las trae (los reportes anteriores no las tienen)
+OPCIONALES = {'Grupo de artículo': 's', 'Especialista': 's'}
 # Nombres nuevos del reporte -> nombre interno (se aceptan ambos)
-ALIAS = {'Ult. Fecha Ingr': 'Ult. Fecha Ingr. Bod', 'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente'}  # la fecha primero
+ALIAS = {'Ult. Fecha Ingr': 'Ult. Fecha Ingr. Bod', 'Ult. Ingr.': 'Ult. Fecha Ingr. Bod', 'Cant. Pendiente': 'Cantidad Pendiente',
+         'Grupo de materiales': 'Grupo de artículo', 'Especialista de compras': 'Especialista'}  # la fecha primero
 NOMBRE = {'Ult. Fecha Ingr. Bod': 'Ult. Ingr.', 'Cantidad Pendiente': 'Cant. Pendiente'}
 EPOCH = pd.Timestamp('1970-01-01')
 BASE_MIN = int((pd.Timestamp('2025-01-01') - EPOCH).total_seconds() // 60)  # minutos; divisible para 10
@@ -50,7 +53,7 @@ def main():
 
     out = {'n': int(len(df)), 'cols': {}}
     fechas_max = []
-    for c, t in COLS.items():
+    for c, t in {**COLS, **{k: v for k, v in OPCIONALES.items() if k in df.columns}}.items():
         s = df[c]
         if t == 's':
             s = s.astype('string').fillna('')

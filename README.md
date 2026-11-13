@@ -8,7 +8,7 @@ Tablero web (HTML + JavaScript) publicado en Cloudflare Workers desde GitHub, co
 - Etapas del ciclo: aprob. cantidad, cotización, aprob. precio, aprobador OC1, aprobador OC2, generación OC, ingreso bodega.
 - Ciclos en curso (no cerrados).
 - Resumen por sucursal, tipo de solicitud, clúster y categoría.
-- Filtros dinámicos: sucursal, tipo de solicitud, clúster, categoría (material/servicio/activo) y rango de fechas de SOLPED.
+- Filtros dinámicos: sucursal, tipo de solicitud, clúster, categoría (material/servicio/activo), grupo de materiales, especialista y rango de fechas de SOLPED.
 - Filtro por **número de SOLPED** (uno o varios, completos o parciales: `SP202604-00941, 00942`).
 - **Datos en línea**: cualquiera que abra el enlace ve los datos publicados, sin cargar nada.
 - El administrador actualiza los datos desde el mismo tablero: **Cargar reporte nuevo → Publicar para todos** (con clave).
@@ -127,6 +127,8 @@ Si usa la opción A, los datos publicados desde el tablero tienen prioridad sobr
 Fecha solped., Fecha Aprob, Fecha atención comprador, Fecha Preorden, Fecha Aprob Precio, Fecha Aprob 1 OC,
 Fecha Aprob 2 OC, Fecha OC, OC ERP, Fecha de entrega, Ult. Ingr., Cant. Orden Compra, Cant. Ingreso,
 Cant. Pendiente`
+
+Opcionales: `Grupo de artículo` y `Especialista`. Si el reporte trae **Especialista**, el tablero agrega el filtro *Especialista*, la agrupación por especialista en *Resumen* y *Etapas del ciclo*, y la columna Especialista en los detalles de OC abiertas y ciclos en curso. Con reportes que no la traen, todo eso se oculta.
 
 También se aceptan los nombres anteriores de esas dos columnas (`Ult. Fecha Ingr. Bod` y `Cantidad Pendiente`), así que sirven reportes viejos y nuevos.
 
